@@ -107,22 +107,24 @@ export default function AnalyticsMainSection() {
 
   // Fetch campaigns list once
   useEffect(() => {
-    fetchCampaignsSummary()
+    if (!user.id) return;
+    fetchCampaignsSummary(user.id)
       .then(setCampaigns)
       .catch(() => {});
-  }, []);
+  }, [user.id]);
 
   // Fetch filtered data whenever selectedCampaignId changes
   const loadFilteredData = useCallback(async (campaignId?: string) => {
+    if (!user.id) return;
     setLoading(true);
     try {
       const [overviewRes, scoresRes, ageRes, uniRes, cityRes] =
         await Promise.all([
-          fetchOverview(campaignId),
-          fetchScoreDistribution(campaignId),
-          fetchAgeStats(campaignId),
-          fetchUniversityStats(campaignId),
-          fetchCityStats(campaignId),
+          fetchOverview(user.id, campaignId),
+          fetchScoreDistribution(user.id, campaignId),
+          fetchAgeStats(user.id, campaignId),
+          fetchUniversityStats(user.id, campaignId),
+          fetchCityStats(user.id, campaignId),
         ]);
       setOverview(overviewRes);
       setScores(scoresRes);
@@ -134,7 +136,7 @@ export default function AnalyticsMainSection() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     loadFilteredData(selectedCampaignId);

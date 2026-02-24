@@ -24,6 +24,9 @@ export interface CampaignCriteria {
 
 export class CreateCampaignDto {
   @IsString()
+  user_id: string;
+
+  @IsString()
   name: string;
 
   @IsString()

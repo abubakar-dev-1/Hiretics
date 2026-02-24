@@ -26,7 +26,7 @@ export class SubscriptionService {
       .from('subscription')
       .select('plan')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       throw new InternalServerErrorException(
@@ -40,14 +40,13 @@ export class SubscriptionService {
     };
   }
 
-  // ✅ Update subscription
+  // ✅ Update subscription (upsert: creates if not exists, updates if exists)
   async updateSubscription(body: { user_id: string; plan: string }) {
     const { user_id, plan } = body;
 
     const { error } = await supabase
       .from('subscription')
-      .update({ plan })
-      .eq('user_id', user_id);
+      .upsert({ user_id, plan }, { onConflict: 'user_id' });
 
     if (error) {
       throw new InternalServerErrorException(

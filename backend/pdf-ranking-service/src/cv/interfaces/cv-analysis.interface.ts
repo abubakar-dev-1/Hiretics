@@ -27,6 +27,7 @@ export interface ApplicantData {
   cv_link: string;
   age: number;
   campaign_id: string;
+  user_id: string;
   city: string;
   university: string;
   score: number;

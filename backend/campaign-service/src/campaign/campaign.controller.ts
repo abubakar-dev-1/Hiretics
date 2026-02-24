@@ -22,29 +22,39 @@ export class CampaignController {
   }
 
   @Get()
-  findAll(@Query('is_archived') isArchived?: boolean): Promise<Campaign[]> {
-    return this.campaignService.findAll(isArchived);
+  findAll(
+    @Query('user_id') userId: string,
+    @Query('is_archived') isArchived?: boolean,
+  ): Promise<Campaign[]> {
+    return this.campaignService.findAll(userId, isArchived);
   }
   @Get('favourite')
-  findAllFavourite(): Promise<Campaign[]> {
-    return this.campaignService.findAllFavourite();
+  findAllFavourite(@Query('user_id') userId: string): Promise<Campaign[]> {
+    return this.campaignService.findAllFavourite(userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<Campaign> {
-    return this.campaignService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Query('user_id') userId: string,
+  ): Promise<Campaign> {
+    return this.campaignService.findOne(id, userId);
   }
 
   @Put(':id')
   update(
     @Param('id') id: string,
+    @Query('user_id') userId: string,
     @Body() dto: UpdateCampaignDto,
   ): Promise<Campaign> {
-    return this.campaignService.update(id, dto);
+    return this.campaignService.update(id, userId, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<{ message: string }> {
-    return this.campaignService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Query('user_id') userId: string,
+  ): Promise<{ message: string }> {
+    return this.campaignService.remove(id, userId);
   }
 }

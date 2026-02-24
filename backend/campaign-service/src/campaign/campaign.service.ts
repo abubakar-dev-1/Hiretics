@@ -8,6 +8,7 @@ import { CampaignCriteria } from './dto/create-campaign.dto';
 
 export interface Campaign {
   id: string;
+  user_id: string;
   name: string;
   company_name: string;
   job_role: string;
@@ -64,42 +65,46 @@ export class CampaignService {
     }
   }
 
-  async findAll(isArchived?: boolean): Promise<Campaign[]> {
+  async findAll(userId: string, isArchived?: boolean): Promise<Campaign[]> {
     await this.updateCampaignStatuses();
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
+      .eq('user_id', userId)
       .eq('is_archived', isArchived);
     if (error) throw error;
     return data as Campaign[];
   }
-  async findAllFavourite(): Promise<Campaign[]> {
+  async findAllFavourite(userId: string): Promise<Campaign[]> {
     await this.updateCampaignStatuses();
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
+      .eq('user_id', userId)
       .eq('is_favorite', true)
       .eq('is_archived', false);
     if (error) throw error;
     return data as Campaign[];
   }
 
-  async findOne(id: string): Promise<Campaign> {
+  async findOne(id: string, userId: string): Promise<Campaign> {
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
     if (error) throw error;
     return data as Campaign;
   }
 
-  async update(id: string, dto: UpdateCampaignDto): Promise<Campaign> {
+  async update(id: string, userId: string, dto: UpdateCampaignDto): Promise<Campaign> {
     // 1. Update the campaign
     const { data, error } = await supabase
       .from('campaigns')
       .update({ ...dto, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
     if (error) throw error;
@@ -128,6 +133,7 @@ export class CampaignService {
         .from('campaigns')
         .update({ status: newStatus })
         .eq('id', id)
+        .eq('user_id', userId)
         .select()
         .single();
       return updated as Campaign;
@@ -137,8 +143,8 @@ export class CampaignService {
     return data as Campaign;
   }
 
-  async remove(id: string): Promise<{ message: string }> {
-    const { error } = await supabase.from('campaigns').delete().eq('id', id);
+  async remove(id: string, userId: string): Promise<{ message: string }> {
+    const { error } = await supabase.from('campaigns').delete().eq('id', id).eq('user_id', userId);
     if (error) throw error;
     return { message: 'Campaign deleted successfully' };
   }

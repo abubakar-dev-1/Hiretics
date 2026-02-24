@@ -11,8 +11,8 @@ interface Applicant {
 
 @Injectable()
 export class AnalyticsService {
-  async getAgeStats(campaignId?: string) {
-    let query = supabase.from('applicants').select('age');
+  async getAgeStats(userId: string, campaignId?: string) {
+    let query = supabase.from('applicants').select('age').eq('user_id', userId);
     if (campaignId) {
       query = query.eq('campaign_id', campaignId);
     }
@@ -42,8 +42,8 @@ export class AnalyticsService {
       .sort((a, b) => a.age - b.age);
   }
 
-  async getUniversityStats(campaignId?: string) {
-    let query = supabase.from('applicants').select('university');
+  async getUniversityStats(userId: string, campaignId?: string) {
+    let query = supabase.from('applicants').select('university').eq('user_id', userId);
     if (campaignId) {
       query = query.eq('campaign_id', campaignId);
     }
@@ -74,8 +74,8 @@ export class AnalyticsService {
       .slice(0, 10);
   }
 
-  async getCityStats(campaignId?: string) {
-    let query = supabase.from('applicants').select('city');
+  async getCityStats(userId: string, campaignId?: string) {
+    let query = supabase.from('applicants').select('city').eq('user_id', userId);
     if (campaignId) {
       query = query.eq('campaign_id', campaignId);
     }
@@ -107,10 +107,11 @@ export class AnalyticsService {
     }));
   }
 
-  async getOverviewStats(campaignId?: string) {
+  async getOverviewStats(userId: string, campaignId?: string) {
     const { data: campaigns, error: campaignsError } = await supabase
       .from('campaigns')
-      .select('id, status');
+      .select('id, status')
+      .eq('user_id', userId);
 
     if (campaignsError) {
       throw new InternalServerErrorException(
@@ -118,7 +119,7 @@ export class AnalyticsService {
       );
     }
 
-    let applicantQuery = supabase.from('applicants').select('score');
+    let applicantQuery = supabase.from('applicants').select('score').eq('user_id', userId);
     if (campaignId) {
       applicantQuery = applicantQuery.eq('campaign_id', campaignId);
     }
@@ -148,8 +149,8 @@ export class AnalyticsService {
     return { totalCampaigns, activeCampaigns, totalApplicants, averageScore };
   }
 
-  async getScoreDistribution(campaignId?: string) {
-    let query = supabase.from('applicants').select('score');
+  async getScoreDistribution(userId: string, campaignId?: string) {
+    let query = supabase.from('applicants').select('score').eq('user_id', userId);
     if (campaignId) {
       query = query.eq('campaign_id', campaignId);
     }
@@ -184,10 +185,11 @@ export class AnalyticsService {
     return buckets.map(({ range, count }) => ({ range, count }));
   }
 
-  async getCampaignsSummary() {
+  async getCampaignsSummary(userId: string) {
     const { data: campaigns, error: campaignsError } = await supabase
       .from('campaigns')
       .select('id, name, status')
+      .eq('user_id', userId)
       .eq('is_archived', false);
 
     if (campaignsError) {
@@ -198,7 +200,8 @@ export class AnalyticsService {
 
     const { data: applicants, error: applicantsError } = await supabase
       .from('applicants')
-      .select('campaign_id, score');
+      .select('campaign_id, score')
+      .eq('user_id', userId);
 
     if (applicantsError) {
       throw new InternalServerErrorException(

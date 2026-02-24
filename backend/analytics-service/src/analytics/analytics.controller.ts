@@ -6,32 +6,47 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('age')
-  getAgeAnalytics(@Query('campaign_id') campaignId?: string) {
-    return this.analyticsService.getAgeStats(campaignId);
+  getAgeAnalytics(
+    @Query('user_id') userId: string,
+    @Query('campaign_id') campaignId?: string,
+  ) {
+    return this.analyticsService.getAgeStats(userId, campaignId);
   }
 
   @Get('university')
-  getUniversityAnalytics(@Query('campaign_id') campaignId?: string) {
-    return this.analyticsService.getUniversityStats(campaignId);
+  getUniversityAnalytics(
+    @Query('user_id') userId: string,
+    @Query('campaign_id') campaignId?: string,
+  ) {
+    return this.analyticsService.getUniversityStats(userId, campaignId);
   }
 
   @Get('city')
-  getCityAnalytics(@Query('campaign_id') campaignId?: string) {
-    return this.analyticsService.getCityStats(campaignId);
+  getCityAnalytics(
+    @Query('user_id') userId: string,
+    @Query('campaign_id') campaignId?: string,
+  ) {
+    return this.analyticsService.getCityStats(userId, campaignId);
   }
 
   @Get('overview')
-  getOverview(@Query('campaign_id') campaignId?: string) {
-    return this.analyticsService.getOverviewStats(campaignId);
+  getOverview(
+    @Query('user_id') userId: string,
+    @Query('campaign_id') campaignId?: string,
+  ) {
+    return this.analyticsService.getOverviewStats(userId, campaignId);
   }
 
   @Get('scores')
-  getScoreDistribution(@Query('campaign_id') campaignId?: string) {
-    return this.analyticsService.getScoreDistribution(campaignId);
+  getScoreDistribution(
+    @Query('user_id') userId: string,
+    @Query('campaign_id') campaignId?: string,
+  ) {
+    return this.analyticsService.getScoreDistribution(userId, campaignId);
   }
 
   @Get('campaigns-summary')
-  getCampaignsSummary() {
-    return this.analyticsService.getCampaignsSummary();
+  getCampaignsSummary(@Query('user_id') userId: string) {
+    return this.analyticsService.getCampaignsSummary(userId);
   }
 }

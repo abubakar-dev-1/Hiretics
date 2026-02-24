@@ -42,38 +42,41 @@ export interface CityDataItem {
 
 // ---------- Helpers ----------
 
-function qs(campaignId?: string) {
-  return campaignId ? `?campaign_id=${campaignId}` : "";
+function qs(userId: string, campaignId?: string) {
+  const params = new URLSearchParams();
+  params.append("user_id", userId);
+  if (campaignId) params.append("campaign_id", campaignId);
+  return `?${params.toString()}`;
 }
 
 // ---------- API functions ----------
 
-export async function fetchOverview(campaignId?: string): Promise<OverviewStats> {
-  const { data } = await axios.get(`${BASE}/analytics/overview${qs(campaignId)}`);
+export async function fetchOverview(userId: string, campaignId?: string): Promise<OverviewStats> {
+  const { data } = await axios.get(`${BASE}/analytics/overview${qs(userId, campaignId)}`);
   return data;
 }
 
-export async function fetchScoreDistribution(campaignId?: string): Promise<ScoreBucket[]> {
-  const { data } = await axios.get(`${BASE}/analytics/scores${qs(campaignId)}`);
+export async function fetchScoreDistribution(userId: string, campaignId?: string): Promise<ScoreBucket[]> {
+  const { data } = await axios.get(`${BASE}/analytics/scores${qs(userId, campaignId)}`);
   return data;
 }
 
-export async function fetchCampaignsSummary(): Promise<CampaignSummary[]> {
-  const { data } = await axios.get(`${BASE}/analytics/campaigns-summary`);
+export async function fetchCampaignsSummary(userId: string): Promise<CampaignSummary[]> {
+  const { data } = await axios.get(`${BASE}/analytics/campaigns-summary?user_id=${userId}`);
   return data;
 }
 
-export async function fetchAgeStats(campaignId?: string): Promise<AgeDataItem[]> {
-  const { data } = await axios.get(`${BASE}/analytics/age${qs(campaignId)}`);
+export async function fetchAgeStats(userId: string, campaignId?: string): Promise<AgeDataItem[]> {
+  const { data } = await axios.get(`${BASE}/analytics/age${qs(userId, campaignId)}`);
   return data;
 }
 
-export async function fetchUniversityStats(campaignId?: string): Promise<UniversityDataItem[]> {
-  const { data } = await axios.get(`${BASE}/analytics/university${qs(campaignId)}`);
+export async function fetchUniversityStats(userId: string, campaignId?: string): Promise<UniversityDataItem[]> {
+  const { data } = await axios.get(`${BASE}/analytics/university${qs(userId, campaignId)}`);
   return data;
 }
 
-export async function fetchCityStats(campaignId?: string): Promise<CityDataItem[]> {
-  const { data } = await axios.get(`${BASE}/analytics/city${qs(campaignId)}`);
+export async function fetchCityStats(userId: string, campaignId?: string): Promise<CityDataItem[]> {
+  const { data } = await axios.get(`${BASE}/analytics/city${qs(userId, campaignId)}`);
   return data;
 }

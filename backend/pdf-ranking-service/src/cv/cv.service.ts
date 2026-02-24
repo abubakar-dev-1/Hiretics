@@ -159,11 +159,13 @@ ${resumeText}`;
   private async getCvInfoAndScore(
     file: Express.Multer.File,
     campaignId: string,
+    userId: string,
   ): Promise<CVAnalysisResult> {
     const { data: campaign, error } = await supabase
       .from('campaigns')
       .select('job_description, job_role, criteria')
       .eq('id', campaignId)
+      .eq('user_id', userId)
       .single();
 
     if (error || !campaign?.job_description) {
@@ -249,13 +251,14 @@ ${resumeText}`;
   async processCv(
     file: Express.Multer.File,
     campaignId: string,
+    userId: string,
   ): Promise<{
     message: string;
     data: CVAnalysisResult & { cv_link: string; campaign_id: string };
   }> {
     try {
       const cvLink = await this.getCvLink(file, campaignId);
-      const info = await this.getCvInfoAndScore(file, campaignId);
+      const info = await this.getCvInfoAndScore(file, campaignId, userId);
 
       await this.postApplicantData({
         name: info.name,
@@ -263,6 +266,7 @@ ${resumeText}`;
         cv_link: cvLink,
         age: info.age,
         campaign_id: campaignId,
+        user_id: userId,
         city: info.city,
         university: info.university,
         score: info.score,
@@ -290,7 +294,7 @@ ${resumeText}`;
     }
   }
 
-  async getRankedCvs(campaignId: string): Promise<
+  async getRankedCvs(campaignId: string, userId: string): Promise<
     Array<{
       name: string;
       email: string;
@@ -311,6 +315,7 @@ ${resumeText}`;
       .from('applicants')
       .select('name, email, cv_link, score, city, university, scoring_breakdown, matched_skills, matched_keywords, relevance, ranking_reason, campaign_id')
       .eq('campaign_id', campaignId)
+      .eq('user_id', userId)
       .order('score', { ascending: false });
 
     console.log('Filtered applicants for campaign:', data?.length || 0);

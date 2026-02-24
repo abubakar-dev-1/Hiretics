@@ -3,6 +3,18 @@ import { Campaign } from "@/types/campaign";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+function getUserId(): string {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  return user.id || "";
+}
+
+function buildUrl(path: string): string {
+  const userId = getUserId();
+  const url = new URL(`${BASE_URL}${path}`);
+  if (userId) url.searchParams.append("user_id", userId);
+  return url.toString();
+}
+
 export async function createCampaign(data: Campaign) {
   return apiRequest<Campaign>("/campaigns", {
     method: "POST",
@@ -11,16 +23,24 @@ export async function createCampaign(data: Campaign) {
 }
 
 export const getCampaigns = async (isArchived?: boolean): Promise<Campaign[]> => {
-  const queryParams = isArchived !== undefined ? `?is_archived=${isArchived}` : '';
-  return apiRequest<Campaign[]>(`/campaigns${queryParams}`);
+  const userId = getUserId();
+  const params = new URLSearchParams();
+  if (userId) params.append("user_id", userId);
+  if (isArchived !== undefined) params.append("is_archived", String(isArchived));
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<Campaign[]>(`/campaigns${qs}`);
 };
-export const getFavouriteCampaigns = async (isFavourite?: boolean): Promise<Campaign[]> => {
-  const queryParams = isFavourite !== undefined ? `?is_favourite=${isFavourite}` : '';
-  return apiRequest<Campaign[]>(`/campaigns/favourite${queryParams}`);
+
+export const getFavouriteCampaigns = async (): Promise<Campaign[]> => {
+  const userId = getUserId();
+  const params = new URLSearchParams();
+  if (userId) params.append("user_id", userId);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest<Campaign[]>(`/campaigns/favourite${qs}`);
 };
 
 export const getCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`);
+  const response = await fetch(buildUrl(`/campaigns/${id}`));
   if (!response.ok) {
     throw new Error('Failed to fetch campaign');
   }
@@ -28,14 +48,11 @@ export const getCampaign = async (id: string): Promise<Campaign> => {
 };
 
 export const archiveCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_archived: true, status: 'completed' }),
   });
-
   if (!response.ok) {
     throw new Error('Failed to archive campaign');
   }
@@ -46,11 +63,9 @@ export const favoriteCampaign = async (id: string, isFavorite?: boolean): Promis
   const body: any = {};
   if (typeof isFavorite === "boolean") body.is_favorite = isFavorite;
 
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!response.ok) {
@@ -60,11 +75,9 @@ export const favoriteCampaign = async (id: string, isFavorite?: boolean): Promis
 };
 
 export const updateCampaign = async (id: string, data: any): Promise<Campaign> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -74,11 +87,9 @@ export const updateCampaign = async (id: string, data: any): Promise<Campaign> =
 };
 
 export const startCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: 'ongoing' }),
   });
   if (!response.ok) {
@@ -88,11 +99,9 @@ export const startCampaign = async (id: string): Promise<Campaign> => {
 };
 
 export const stopCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: 'completed' }),
   });
   if (!response.ok) {
@@ -102,7 +111,7 @@ export const stopCampaign = async (id: string): Promise<Campaign> => {
 };
 
 export const deleteCampaign = async (id: string): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'DELETE',
   });
   if (!response.ok) {
@@ -111,11 +120,9 @@ export const deleteCampaign = async (id: string): Promise<void> => {
 };
 
 export const restoreCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+  const response = await fetch(buildUrl(`/campaigns/${id}`), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_archived: false }),
   });
   if (!response.ok) {

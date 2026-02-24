@@ -84,14 +84,14 @@ export default function PricingPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get("session_id");
 
-    if (sessionId) {
+    if (sessionId && user.id) {
       toast.success("🎉 Subscription successful! Welcome to Pro!", {
         duration: 5000,
       });
       updateUserSubscription();
       window.history.replaceState({}, document.title, "/pricing");
     }
-  }, []);
+  }, [user.id]);
 
   const handleSubscribe = async () => {
     try {
