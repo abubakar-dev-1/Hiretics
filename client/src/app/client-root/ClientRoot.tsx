@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react"
+import { ThemeProvider } from "next-themes"
 import { SplashScreen } from "@/components/splash/SaplashScreen"
 
 export const ClientRoot = ({ children }: { children: React.ReactNode }) => {
@@ -11,5 +12,9 @@ export const ClientRoot = ({ children }: { children: React.ReactNode }) => {
     return () => clearTimeout(timer)
   }, [])
 
-  return loading ? <SplashScreen /> : <>{children}</>
+  return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      {loading ? <SplashScreen /> : children}
+    </ThemeProvider>
+  )
 }

@@ -4,15 +4,8 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, User, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Check, BarChart3, Users, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,6 +16,29 @@ import axios from "axios";
 interface SignupFormProps {
   onSubmit?: (name: string, email: string, password: string) => Promise<void>;
 }
+
+const features = [
+  {
+    icon: Users,
+    title: "Smart CV Ranking",
+    description: "AI ranks candidates so you find the best fit instantly",
+  },
+  {
+    icon: BarChart3,
+    title: "Rich Analytics",
+    description: "Insights on age, location, university and score distributions",
+  },
+  {
+    icon: Zap,
+    title: "Fast Campaign Setup",
+    description: "Create a campaign and start receiving CVs in minutes",
+  },
+  {
+    icon: Shield,
+    title: "Secure & Private",
+    description: "Your data is encrypted and never shared with third parties",
+  },
+];
 
 export default function SignupForm({ onSubmit }: SignupFormProps) {
   const router = useRouter();
@@ -72,17 +88,11 @@ export default function SignupForm({ onSubmit }: SignupFormProps) {
           email,
           password,
           options: {
-            data: {
-              full_name: name,
-            },
+            data: { full_name: name },
           },
         });
 
-        if (signUpError) {
-          throw signUpError;
-        }
-
-        // 
+        if (signUpError) throw signUpError;
 
         if (data?.user) {
           await axios.post(
@@ -104,116 +114,154 @@ export default function SignupForm({ onSubmit }: SignupFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-amber-50 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold text-gray-900">
-            Create Account
-          </CardTitle>
-          <CardDescription className="text-gray-600">
-            Sign up to get started with your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen flex">
+      {/* Left branded panel */}
+      <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] bg-[#16A34A] relative overflow-hidden flex-col justify-between p-10">
+        <div>
+          <div className="flex items-center gap-2 mb-16">
+            <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">H</span>
+            </div>
+            <span className="text-white text-xl font-bold tracking-tight">
+              Hiretics
+            </span>
+          </div>
+
+          <h2 className="text-white text-3xl font-bold leading-tight mb-3">
+            Start hiring
+            <br />
+            with AI today.
+          </h2>
+          <p className="text-white/70 text-base mb-12">
+            Join thousands of recruiters who save hours with smart CV ranking.
+          </p>
+
+          <div className="space-y-5">
+            {features.map((feature) => (
+              <div key={feature.title} className="flex gap-3">
+                <div className="h-9 w-9 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                  <feature.icon size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-white text-sm font-semibold">
+                    {feature.title}
+                  </p>
+                  <p className="text-white/60 text-sm">
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-white/40 text-xs">
+          Trusted by recruiters worldwide
+        </p>
+
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-white/5" />
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5" />
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="h-9 w-9 rounded-lg bg-[#16A34A] flex items-center justify-center">
+              <span className="text-white font-bold text-lg">H</span>
+            </div>
+            <span className="text-foreground text-xl font-bold tracking-tight">
+              Hiretics
+            </span>
+          </div>
+
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-foreground">Create account</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Get started with your free account
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
             {error && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-700">
+              <Alert className="border-destructive/50 bg-destructive/10">
+                <AlertDescription className="text-sm text-red-700 dark:text-red-400">
                   {error}
                 </AlertDescription>
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="name"
-                className="text-sm font-medium text-gray-700"
-              >
-                Full Name
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-sm font-medium">
+                Full name
               </Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Enter your full name"
+                  placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10 h-12 border-gray-200 focus:border-secondary focus:ring-secondary"
+                  className="pl-10 h-11"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-sm font-medium text-gray-700"
-              >
-                Email Address
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 border-gray-200 focus:border-secondary focus:ring-secondary"
+                  className="pl-10 h-11"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-gray-700"
-              >
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm font-medium">
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 border-gray-200 focus:border-secondary focus:ring-secondary"
+                  className="pl-10 pr-10 h-11"
                   required
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </Button>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
 
               {password && (
                 <div className="mt-2 space-y-1">
                   {passwordRequirements.map((req, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center space-x-2 text-xs"
-                    >
+                    <div key={index} className="flex items-center gap-1.5 text-xs">
                       <Check
                         className={`h-3 w-3 ${
-                          req.met ? "text-green-500" : "text-gray-300"
+                          req.met ? "text-[#16A34A]" : "text-muted-foreground/40"
                         }`}
                       />
-                      <span
-                        className={req.met ? "text-green-600" : "text-gray-500"}
-                      >
+                      <span className={req.met ? "text-[#16A34A]" : "text-muted-foreground"}>
                         {req.text}
                       </span>
                     </div>
@@ -222,67 +270,47 @@ export default function SignupForm({ onSubmit }: SignupFormProps) {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="confirmPassword"
-                className="text-sm font-medium text-gray-700"
-              >
-                Confirm Password
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                Confirm password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 border-gray-200 focus:border-secondary focus:ring-secondary"
+                  className="pl-10 pr-10 h-11"
                   required
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </Button>
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
-            <div className="flex items-start space-x-2">
+            <div className="flex items-start gap-2 pt-1">
               <input
                 id="terms"
                 type="checkbox"
                 checked={acceptTerms}
                 onChange={(e) => setAcceptTerms(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 focus:ring-secondary"
+                className="mt-0.5 h-4 w-4 rounded border-input"
                 style={{ accentColor: "#16A34A" }}
               />
-              <Label
-                htmlFor="terms"
-                className="text-sm text-gray-600 leading-5"
-              >
+              <Label htmlFor="terms" className="text-xs text-muted-foreground leading-4">
                 I agree to the{" "}
-                <Link
-                  href="/"
-                  className="font-medium hover:underline"
-                  style={{ color: "#16A34A" }}
-                >
+                <Link href="/" className="font-medium text-[#16A34A] hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link
-                  href="/"
-                  className="font-medium hover:underline"
-                  style={{ color: "#16A34A" }}
-                >
+                <Link href="/" className="font-medium text-[#16A34A] hover:underline">
                   Privacy Policy
                 </Link>
               </Label>
@@ -290,26 +318,21 @@ export default function SignupForm({ onSubmit }: SignupFormProps) {
 
             <Button
               type="submit"
-              className="w-full h-12 text-white font-medium"
-              style={{ backgroundColor: "#16A34A" }}
+              className="w-full h-11 bg-[#16A34A] hover:bg-[#15803D] text-white font-medium"
               disabled={isLoading}
             >
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {isLoading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link
-              href="/signin"
-              className="font-medium hover:underline"
-              style={{ color: "#16A34A" }}
-            >
-              Sign in here
+            <Link href="/signin" className="font-medium text-[#16A34A] hover:underline">
+              Sign in
             </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

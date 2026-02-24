@@ -1,82 +1,77 @@
 "use client";
 
-import { Users, Clock, Eye, ArrowRight } from "lucide-react";
+import { Users, Clock, Activity, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CountCardsProps {
   responsesReceived?: number;
   daysRemaining?: number;
+  status?: string;
   onViewAsApplicant?: () => void;
 }
 
+const statusDisplay: Record<string, string> = {
+  ongoing: "Ongoing",
+  completed: "Completed",
+  "not-started": "Not Started",
+  archived: "Archived",
+};
+
 export function CountCards({
-  responsesReceived = 100,
+  responsesReceived = 0,
   daysRemaining = 0,
+  status = "ongoing",
   onViewAsApplicant,
 }: CountCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      {/* Responses Received Card */}
-      <Card className="p-6 max-h-[180px]">
-        <CardContent className="p-0">
-          <div className="flex">
-            {/* Responses Received */}
-            <div className="flex flex-col space-y-3 flex-1">
-              <div className="p-2 bg-gray-100 rounded-lg w-fit">
-                <Users className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Responses Received</p>
-                <p className="text-3xl font-bold text-[#16A34A]">
-                  {responsesReceived}
-                </p>
-              </div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <CardContent className="p-0 flex items-center gap-3">
+            <div className="p-2 bg-[#16A34A]/10 rounded-lg shrink-0">
+              <Users className="w-5 h-5 text-[#16A34A]" />
             </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Responses</p>
+              <p className="text-xl font-bold text-[#16A34A]">{responsesReceived}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Divider Line */}
-            <div className="w-px bg-gray-200 mx-6"></div>
+        <Card className="p-4">
+          <CardContent className="p-0 flex items-center gap-3">
+            <div className="p-2 bg-orange-50 rounded-lg shrink-0">
+              <Clock className="w-5 h-5 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Days Left</p>
+              <p className="text-xl font-bold text-foreground">{daysRemaining}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Days Remaining */}
-            <div className="flex flex-col space-y-3 flex-1">
-              <div className="p-2 bg-gray-100 rounded-lg w-fit">
-                <Clock className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Days <br /> Remaining</p>
-                <p className="text-3xl font-bold text-[#16A34A]">
-                  {daysRemaining}
-                </p>
-              </div>
+        <Card className="p-4">
+          <CardContent className="p-0 flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg shrink-0">
+              <Activity className="w-5 h-5 text-blue-500" />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xl font-bold text-foreground">{statusDisplay[status] || status}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* View as Applicant Card */}
-      <Card
-        className="p-6 cursor-pointer max-h-[180px] hover:bg-gray-50 transition-colors"
-        onClick={onViewAsApplicant}
-      >
-        <CardContent className="p-0">
-          <div className="flex items-center flex-col justify-between space-y-4">
-            <div className="flex items-start flex-col space-y-2">
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <Eye className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-700 font-medium">
-                  View campaign document as an applicant.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-end justify-end w-full">
-              <div className="p-2 bg-[#16A34A] rounded-full  flex-shrink-0">
-                <ArrowRight className="w-4 h-4 text-white" />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {onViewAsApplicant && (
+        <button
+          onClick={onViewAsApplicant}
+          className="flex items-center gap-1.5 text-sm text-[#16A34A] hover:underline pl-1"
+        >
+          <ExternalLink size={14} />
+          View as applicant
+        </button>
+      )}
     </div>
   );
 }

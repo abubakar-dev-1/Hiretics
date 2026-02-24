@@ -1,16 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { BreadcrumbDemo } from "./BreadCrums";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
   Tooltip,
   ResponsiveContainer,
   XAxis,
   YAxis,
+  CartesianGrid,
 } from "recharts";
 import {
   Select,
@@ -19,122 +22,178 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "../ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "../ui/button";
-import axios from "axios";
 import Link from "next/link";
+import axios from "axios";
+import {
+  fetchOverview,
+  fetchScoreDistribution,
+  fetchCampaignsSummary,
+  fetchAgeStats,
+  fetchUniversityStats,
+  fetchCityStats,
+  type OverviewStats,
+  type ScoreBucket,
+  type CampaignSummary,
+  type AgeDataItem,
+  type UniversityDataItem,
+  type CityDataItem,
+} from "@/api/analytics/api";
+import { Briefcase, Activity, Users, TrendingUp } from "lucide-react";
 
-interface AgeDataItem {
-  age: number;
-  count: number;
-}
-
-interface UniversityDataItem {
-  university: string;
-  count: number;
-}
-
-interface CityDataItem {
-  city: string;
-  percentage: string;
-}
-
-const colors = ["#22c55e", "#86efac", "#bbf7d0", "#dcfce7"];
+const CHART_COLORS = [
+  "#16A34A",
+  "#22c55e",
+  "#4ade80",
+  "#86efac",
+  "#bbf7d0",
+  "#dcfce7",
+  "#a3e635",
+  "#65a30d",
+];
 
 export default function AnalyticsMainSection() {
-  const [selectedLine, setSelectedLine] = useState("age");
-  const [selectedPie, setSelectedPie] = useState("city");
-  const [ageData, setAgeData] = useState<AgeDataItem[]>([]);
-  const [cityData, setCityData] = useState<CityDataItem[]>([]);
   const [isUserSubscribed, setIsUserSubscribed] = useState(false);
-  const storedUser = localStorage.getItem("user");
-  const user = JSON.parse(storedUser || "{}");
-  const [universityData, setUniversityData] = useState<UniversityDataItem[]>(
-    []
-  );
+  const [user, setUser] = useState<Record<string, string>>({});
 
-  const transformedAgeData = ageData.map((item) => ({
-    name: item.age?.toString() || "",
-    value: item.count || 0,
-  }));
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | undefined>(undefined);
 
-  const transformedUniversityData = universityData.map((item) => ({
-    label: item.university || "",
-    value: item.count || 0,
-  }));
+  const [overview, setOverview] = useState<OverviewStats>({
+    totalCampaigns: 0,
+    activeCampaigns: 0,
+    totalApplicants: 0,
+    averageScore: 0,
+  });
+  const [scores, setScores] = useState<ScoreBucket[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
+  const [ageData, setAgeData] = useState<AgeDataItem[]>([]);
+  const [universityData, setUniversityData] = useState<UniversityDataItem[]>([]);
+  const [cityData, setCityData] = useState<CityDataItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const transformedCityData = cityData.map((item) => ({
-    name: item.city || "",
-    value: parseFloat(item.percentage) || 0,
-  }));
+  // Auth & subscription
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {}
+    }
+  }, []);
 
-  const currentLineData = transformedAgeData;
-  const currentPieData = transformedCityData;
-
-  const getUserSubscription = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL_SUBSCRIPTION}/subs?user_id=${user.id}`
-      );
-      if (response.data.plan === "free") {
-        setIsUserSubscribed(false);
-      } else {
-        setIsUserSubscribed(true);
+  useEffect(() => {
+    if (!user.id) return;
+    (async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL_SUBSCRIPTION}/subs?user_id=${user.id}`
+        );
+        setIsUserSubscribed(response.data.plan !== "free");
+      } catch {
+        // default to not subscribed
       }
-    } catch (error) {
-      console.log(error);
-    }
-  };
+    })();
+  }, [user.id]);
 
+  // Fetch campaigns list once
   useEffect(() => {
-    getUserSubscription();
+    fetchCampaignsSummary()
+      .then(setCampaigns)
+      .catch(() => {});
   }, []);
 
-  const getAgeData = async () => {
+  // Fetch filtered data whenever selectedCampaignId changes
+  const loadFilteredData = useCallback(async (campaignId?: string) => {
+    setLoading(true);
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL_ANALYTICS}/analytics/age`
-      );
-      setAgeData(response.data);
-    } catch (error) {
-      console.log(error);
+      const [overviewRes, scoresRes, ageRes, uniRes, cityRes] =
+        await Promise.all([
+          fetchOverview(campaignId),
+          fetchScoreDistribution(campaignId),
+          fetchAgeStats(campaignId),
+          fetchUniversityStats(campaignId),
+          fetchCityStats(campaignId),
+        ]);
+      setOverview(overviewRes);
+      setScores(scoresRes);
+      setAgeData(ageRes);
+      setUniversityData(uniRes);
+      setCityData(cityRes);
+    } catch (err) {
+      console.error("Failed to load analytics:", err);
+    } finally {
+      setLoading(false);
     }
-  };
-  const getCityData = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL_ANALYTICS}/analytics/city`
-      );
-      setCityData(response.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  const getUniversityData = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL_ANALYTICS}/analytics/university`
-      );
-      setUniversityData(response.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  }, []);
 
   useEffect(() => {
-    getAgeData();
-    getCityData();
-    getUniversityData();
-  }, []);
+    loadFilteredData(selectedCampaignId);
+  }, [selectedCampaignId, loadFilteredData]);
+
+  const handleCampaignSelect = (value: string) => {
+    setSelectedCampaignId(value === "all" ? undefined : value);
+  };
+
+  const handleRowClick = (campaignId: string) => {
+    setSelectedCampaignId((prev) => (prev === campaignId ? undefined : campaignId));
+  };
+
+  // KPI card config
+  const kpiCards = [
+    {
+      label: "Total Campaigns",
+      value: overview.totalCampaigns,
+      icon: Briefcase,
+    },
+    {
+      label: "Active Campaigns",
+      value: overview.activeCampaigns,
+      icon: Activity,
+    },
+    {
+      label: "Total Applicants",
+      value: overview.totalApplicants,
+      icon: Users,
+    },
+    {
+      label: "Average Score",
+      value: overview.averageScore,
+      icon: TrendingUp,
+    },
+  ];
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "ongoing":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "completed":
+        return "bg-gray-100 text-gray-700 border-gray-200";
+      case "not-started":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      default:
+        return "bg-gray-100 text-gray-600 border-gray-200";
+    }
+  };
 
   return (
     <div className="p-6 relative">
+      {/* Subscription gate */}
       {!isUserSubscribed && (
         <div className="absolute top-0 right-0 w-full h-full flex flex-col items-center pt-32 z-10 backdrop-blur-md">
-          <h2 className="text-2xl font-semibold mb-4 text-center ">
+          <h2 className="text-2xl font-semibold mb-4 text-center">
             Subscribe to Pro
           </h2>
-          <p className="text-lg text-gray-600 mb-4 text-center max-w-md">
+          <p className="text-lg text-muted-foreground mb-4 text-center max-w-md">
             Subscribe to Pro to get access to all features.
           </p>
           <Link href="/pricing">
@@ -142,140 +201,211 @@ export default function AnalyticsMainSection() {
           </Link>
         </div>
       )}
+
       <BreadcrumbDemo />
       <h1 className="text-2xl font-semibold pt-8 pb-6">Campaign Analytics</h1>
-      <div className="bg-white rounded-[6px] p-4 border shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex gap-2">
-            <Button size="sm" className="bg-[#16A34A] text-white">
-              Age Distribution
-            </Button>
-          </div>
-          <Select value={selectedLine} onValueChange={setSelectedLine}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select data" />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {kpiCards.map((kpi) => (
+          <Card key={kpi.label} className="py-4">
+            <CardContent className="flex items-center gap-4 px-4 py-0">
+              <div className="rounded-lg bg-green-50 p-2.5">
+                <kpi.icon className="h-5 w-5 text-[#16A34A]" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                <p className="text-2xl font-bold">{kpi.value}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Campaign Filter + Score Distribution */}
+      <div className="bg-card rounded-lg p-6 border shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+          <h2 className="text-lg font-semibold">Score Distribution</h2>
+          <Select
+            value={selectedCampaignId ?? "all"}
+            onValueChange={handleCampaignSelect}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="All Campaigns" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="age">Age Distribution</SelectItem>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={currentLineData}>
-            <XAxis dataKey="name" />
-            <YAxis />
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={scores}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="range" />
+            <YAxis allowDecimals={false} />
             <Tooltip />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="#22c55e"
-              strokeWidth={2}
-            />
-          </LineChart>
+            <Bar dataKey="count" fill="#16A34A" radius={[4, 4, 0, 0]} name="Applicants" />
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="md:flex w-full gap-4">
-        <div className="mt-6 bg-white w-full p-6 rounded-lg border shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Educational Background</h2>
-          <div className="space-y-3">
-            {transformedUniversityData.map((edu, idx) => (
-              <div key={idx}>
-                <div className="text-sm font-medium">{edu.label}</div>
-                <Progress
-                  value={edu.value}
-                  className="h-3 bg-[#E7F9ED] [&>div]:bg-[#16A34A] rounded-full"
-                />
-              </div>
-            ))}
-          </div>
+      {/* City + University side by side */}
+      <div className="grid md:grid-cols-2 gap-4 mb-6">
+        {/* City Donut */}
+        <div className="bg-card rounded-lg p-6 border shadow-sm">
+          <h2 className="text-lg font-semibold mb-4">City Distribution</h2>
+          {cityData.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-16">
+              No data available
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={cityData.map((c) => ({ name: c.city, value: c.count }))}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={110}
+                  innerRadius={60}
+                  paddingAngle={2}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                  labelLine={true}
+                >
+                  {cityData.map((_, i) => (
+                    <Cell
+                      key={`city-${i}`}
+                      fill={CHART_COLORS[i % CHART_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
-        <div className="bg-white flex flex-col items-center justify-start gap-12 w-full mt-6 rounded-lg p-4 border shadow-sm">
-          <div className="flex mb-4">
-            <Select value={selectedPie} onValueChange={setSelectedPie}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select data" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="city">City Distribution</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie
-                data={currentPieData}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                outerRadius={120}
-                innerRadius={50}
-                paddingAngle={0}
-                labelLine={false}
-                label={({
-                  cx,
-                  cy,
-                  midAngle,
-                  innerRadius,
-                  outerRadius,
-                  percent,
-                  index,
-                }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius =
-                    innerRadius + (outerRadius - innerRadius) * 0.5;
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-                  const percentage = `${(percent * 100).toFixed(1)}%`;
-                  const label = currentPieData[index]?.name || "";
-
-                  const labelColor = index < 2 ? "#ffffff" : "#22c55e";
-
-                  return (
-                    <g>
-                      <text
-                        x={x}
-                        y={y - 12}
-                        fill={labelColor}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        style={{ fontSize: 14, fontWeight: 600 }}
-                      >
-                        {label}
-                      </text>
-                      <rect
-                        x={x - 20}
-                        y={y}
-                        width={40}
-                        height={20}
-                        rx={4}
-                        ry={4}
-                        fill="white"
-                      />
-                      <text
-                        x={x}
-                        y={y + 10}
-                        fill="#22c55e"
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        style={{ fontSize: 12, fontWeight: 600 }}
-                      >
-                        {percentage}
-                      </text>
-                    </g>
-                  );
-                }}
+        {/* University Horizontal Bar */}
+        <div className="bg-card rounded-lg p-6 border shadow-sm">
+          <h2 className="text-lg font-semibold mb-4">
+            University Distribution (Top 10)
+          </h2>
+          {universityData.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-16">
+              No data available
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={universityData}
+                layout="vertical"
+                margin={{ left: 10, right: 20 }}
               >
-                {currentPieData.map((_, i) => (
-                  <Cell key={`cell-${i}`} fill={colors[i % colors.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="university"
+                  width={120}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip />
+                <Bar
+                  dataKey="count"
+                  fill="#22c55e"
+                  radius={[0, 4, 4, 0]}
+                  name="Applicants"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
+      </div>
+
+      {/* Age Distribution Area Chart */}
+      <div className="bg-card rounded-lg p-6 border shadow-sm mb-6">
+        <h2 className="text-lg font-semibold mb-4">Age Distribution</h2>
+        {ageData.length === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-16">
+            No data available
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={ageData}>
+              <defs>
+                <linearGradient id="ageGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#16A34A" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#16A34A" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="age" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Area
+                type="monotone"
+                dataKey="count"
+                stroke="#16A34A"
+                strokeWidth={2}
+                fill="url(#ageGradient)"
+                name="Applicants"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Campaign Performance Table */}
+      <div className="bg-card rounded-lg p-6 border shadow-sm">
+        <h2 className="text-lg font-semibold mb-4">Campaign Performance</h2>
+        {campaigns.length === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-8">
+            No campaigns found
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Campaign</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Applicants</TableHead>
+                <TableHead className="text-right">Avg Score</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {campaigns.map((c) => (
+                <TableRow
+                  key={c.id}
+                  className={`cursor-pointer ${
+                    selectedCampaignId === c.id ? "bg-green-50" : ""
+                  }`}
+                  onClick={() => handleRowClick(c.id)}
+                >
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={statusColor(c.status)}
+                    >
+                      {c.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {c.applicantCount}
+                  </TableCell>
+                  <TableCell className="text-right">{c.avgScore}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );

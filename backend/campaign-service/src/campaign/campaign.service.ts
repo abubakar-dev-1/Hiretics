@@ -4,6 +4,8 @@ import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { format } from 'date-fns';
 
+import { CampaignCriteria } from './dto/create-campaign.dto';
+
 export interface Campaign {
   id: string;
   name: string;
@@ -15,6 +17,7 @@ export interface Campaign {
   is_archived?: boolean;
   created_at: string;
   updated_at: string;
+  criteria?: CampaignCriteria;
 }
 
 @Injectable()
@@ -36,13 +39,17 @@ export class CampaignService {
       .select('*');
     if (error) throw error;
     for (const campaign of campaigns) {
+      // Skip campaigns that were manually completed or archived
+      if (campaign.status === 'completed' || campaign.status === 'archived') {
+        continue;
+      }
       let newStatus = campaign.status;
       if (campaign.start_date && campaign.end_date) {
         const startDate = format(new Date(campaign.start_date), 'yyyy-MM-dd');
         const endDate = format(new Date(campaign.end_date), 'yyyy-MM-dd');
         if (endDate < today) {
           newStatus = 'completed';
-        } else if (startDate <= today) {
+        } else if (startDate <= today || campaign.status === 'ongoing') {
           newStatus = 'ongoing';
         } else {
           newStatus = 'not-started';
@@ -97,7 +104,12 @@ export class CampaignService {
       .single();
     if (error) throw error;
 
-    // 2. Update the status for this campaign (not all campaigns)
+    // 2. If status was explicitly set in the request, keep it as-is
+    if (dto.status) {
+      return data as Campaign;
+    }
+
+    // 3. Otherwise, auto-calculate status from dates
     const today = format(new Date(), 'yyyy-MM-dd');
     let newStatus = data.status;
     if (data.start_date && data.end_date) {
@@ -121,7 +133,7 @@ export class CampaignService {
       return updated as Campaign;
     }
 
-    // 3. Return the updated campaign
+    // 4. Return the updated campaign
     return data as Campaign;
   }
 

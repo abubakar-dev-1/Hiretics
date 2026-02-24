@@ -16,39 +16,37 @@ const pricingPlans = [
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Perfect for getting started with basic campaign management",
+    description: "Get started with AI-powered hiring for small teams",
     features: [
-      "Up to 3 campaigns",
-      "Basic analytics",
-      "Email support",
-      "Standard templates",
-      "100 applications per month",
+      "Up to 3 active campaigns",
+      "AI-powered CV ranking",
+      "Up to 50 CVs per campaign",
+      "Candidate management",
+      "Favourite campaigns",
     ],
     limitations: [
-      "Limited customization",
-      "No advanced analytics",
-      "No priority support",
-      "No team collaboration",
+      "No analytics dashboard",
+      "Limited CV uploads",
+      "3 campaign limit",
     ],
     popular: false,
-    buttonText: "Get Started",
+    buttonText: "Current Plan",
     buttonVariant: "outline" as const,
   },
   {
     name: "Pro",
-    price: "$29",
+    price: "$9",
     period: "per month",
-    description: "Advanced features for growing businesses and teams",
+    description: "Full analytics and higher limits for growing recruiters",
     features: [
-      "Unlimited campaigns",
-      "Advanced analytics & insights",
-      "Priority email & chat support",
-      "Custom templates & branding",
-      "Unlimited applications",
-      "Team collaboration tools",
-      "API access",
-      "Advanced reporting",
-      "Custom integrations",
+      "Up to 25 active campaigns",
+      "AI-powered CV ranking",
+      "Up to 500 CVs per campaign",
+      "Full analytics dashboard",
+      "Age, university & city insights",
+      "Candidate management",
+      "Favourite campaigns",
+      "Priority CV processing",
     ],
     limitations: [],
     popular: true,
@@ -61,8 +59,14 @@ export default function PricingPage() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const storedUser = localStorage.getItem("user");
-  const user = JSON.parse(storedUser || "{}");
+  const [user, setUser] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try { setUser(JSON.parse(storedUser)); } catch {}
+    }
+  }, []);
 
   const updateUserSubscription = async () => {
     if (user.id) {
@@ -133,7 +137,7 @@ export default function PricingPage() {
     <>
       <div className="w-full bg-muted/20">
         <div className="max-w-[1440px] mx-auto flex px-0 lg:px-6 lg:pt-6 pt-2">
-          <div className="border-[#E4E4E7] border-[1px] shadow-md rounded-[6px] h-screen">
+          <div className="border-border border-[1px] shadow-md rounded-[6px] h-screen">
             <Sidebar
               isMobileOpen={isMobileOpen}
               setIsMobileOpen={setIsMobileOpen}
@@ -151,16 +155,15 @@ export default function PricingPage() {
             <Header
               title="Pricing Plans"
               subtitle="Choose the perfect plan for your hiring needs"
-              user={{ name: "Abdul Moiz", avatarUrl: "" }}
             />
 
             <div className="flex-1 p-6 overflow-auto pb-20">
               {/* Header Section */}
               <div className="text-center mb-12">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                <h1 className="text-3xl font-bold text-foreground mb-4">
                   Simple, Transparent Pricing
                 </h1>
-                <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+                <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
                   Start for free and scale as you grow. No hidden fees, no
                   surprises.
                 </p>
@@ -172,7 +175,7 @@ export default function PricingPage() {
                     className={`relative rounded-xl shadow-lg border transition-all duration-200 hover:shadow-xl h-full flex flex-col ${
                       plan.popular
                         ? "border-[#16A34A] ring-2 ring-[#16A34A]/20 scale-105"
-                        : "border-gray-200 hover:border-gray-300"
+                        : "border-border hover:border-border"
                     }`}
                   >
                     {plan.popular && (
@@ -184,18 +187,18 @@ export default function PricingPage() {
                     )}
 
                     <CardHeader className="text-center pb-4">
-                      <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
+                      <CardTitle className="text-2xl font-bold text-foreground mb-2">
                         {plan.name}
                       </CardTitle>
                       <div className="mb-4">
-                        <span className="text-5xl font-bold text-gray-900">
+                        <span className="text-5xl font-bold text-foreground">
                           {plan.price}
                         </span>
-                        <span className="text-gray-600 ml-2">
+                        <span className="text-muted-foreground ml-2">
                           {plan.name === "Free" ? plan.period : plan.period}
                         </span>
                       </div>
-                      <p className="text-gray-600 text-sm leading-relaxed">
+                      <p className="text-muted-foreground text-sm leading-relaxed">
                         {plan.description}
                       </p>
                     </CardHeader>
@@ -203,7 +206,7 @@ export default function PricingPage() {
                     <CardContent className="flex-1 flex flex-col space-y-6">
                       {/* Features */}
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 mb-3">
+                        <h4 className="font-semibold text-foreground mb-3">
                           What's included:
                         </h4>
                         <ul className="space-y-3">
@@ -213,7 +216,7 @@ export default function PricingPage() {
                               className="flex items-start gap-3"
                             >
                               <Check className="h-5 w-5 text-[#16A34A] mt-0.5 flex-shrink-0" />
-                              <span className="text-gray-700 text-sm">
+                              <span className="text-foreground text-sm">
                                 {feature}
                               </span>
                             </li>
@@ -223,7 +226,7 @@ export default function PricingPage() {
                         {/* Limitations (only for Free plan) */}
                         {plan.limitations.length > 0 && (
                           <div className="mt-6">
-                            <h4 className="font-semibold text-gray-900 mb-3">
+                            <h4 className="font-semibold text-foreground mb-3">
                               Limitations:
                             </h4>
                             <ul className="space-y-3">
@@ -233,8 +236,8 @@ export default function PricingPage() {
                                     key={limitationIndex}
                                     className="flex items-start gap-3"
                                   >
-                                    <X className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                                    <span className="text-gray-500 text-sm">
+                                    <X className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                    <span className="text-muted-foreground text-sm">
                                       {limitation}
                                     </span>
                                   </li>
@@ -256,7 +259,7 @@ export default function PricingPage() {
                           className={`w-full h-12 text-base font-medium ${
                             plan.popular
                               ? "bg-[#16A34A] hover:bg-[#15803D] text-white"
-                              : "border-[#16A34A] text-[#16A34A] hover:bg-[#F0FDF4]"
+                              : "border-[#16A34A] text-[#16A34A] hover:bg-[#16A34A]/10"
                           }`}
                         >
                           {plan.name === "Pro" && isLoading

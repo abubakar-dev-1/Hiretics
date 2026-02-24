@@ -35,7 +35,7 @@ export const archiveCampaign = async (id: string): Promise<Campaign> => {
     },
     body: JSON.stringify({ is_archived: true, status: 'completed' }),
   });
-  
+
   if (!response.ok) {
     throw new Error('Failed to archive campaign');
   }
@@ -71,4 +71,55 @@ export const updateCampaign = async (id: string, data: any): Promise<Campaign> =
     throw new Error('Failed to update campaign');
   }
   return response.json();
-}; 
+};
+
+export const startCampaign = async (id: string): Promise<Campaign> => {
+  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'ongoing' }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to start campaign');
+  }
+  return response.json();
+};
+
+export const stopCampaign = async (id: string): Promise<Campaign> => {
+  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'completed' }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to end campaign');
+  }
+  return response.json();
+};
+
+export const deleteCampaign = async (id: string): Promise<void> => {
+  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete campaign');
+  }
+};
+
+export const restoreCampaign = async (id: string): Promise<Campaign> => {
+  const response = await fetch(`${BASE_URL}/campaigns/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ is_archived: false }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to restore campaign');
+  }
+  return response.json();
+};

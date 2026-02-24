@@ -13,5 +13,11 @@ export type CardComponentProps = {
     isFavorite?: boolean
     onFavorite?: () => void
     onOptions?: () => void
+    onEdit?: () => void
+    onArchive?: () => void
+    onCopyLink?: () => void
+    onRestore?: () => void
+    onDeletePermanently?: () => void
+    isSelected?: boolean
+    onSelectToggle?: (selected: boolean) => void
   }
-  

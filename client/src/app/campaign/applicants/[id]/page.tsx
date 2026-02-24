@@ -1,11 +1,11 @@
 import Applicants from "@/components/applicants/applicants";
-import React from "react";
+import React, { use } from "react";
 
-// 👇 `params` comes from the dynamic segment [id]
-export default function ApplicantsPage({ params }: { params: { id: string } }) {
+export default function ApplicantsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   return (
     <div>
-      <Applicants id={params.id} />
+      <Applicants id={id} />
     </div>
   );
 }

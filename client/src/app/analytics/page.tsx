@@ -14,7 +14,7 @@ export default function AnalyticsPage() {
     <>
       <div className="w-full bg-muted/20">
       <div className="max-w-[1440px] mx-auto flex px-0 lg:px-6 lg:pt-6 pt-2">
-        <div className="border-[#E4E4E7] border-[1px] shadow-md rounded-[6px] h-screen">
+        <div className="border-border border-[1px] shadow-md rounded-[6px] h-screen">
           <Sidebar
             isMobileOpen={isMobileOpen}
             setIsMobileOpen={setIsMobileOpen}
@@ -30,9 +30,8 @@ export default function AnalyticsPage() {
           />
 
           <Header
-            title="Your Campaigns"
-            subtitle="Welcome, Moiz"
-            user={{ name: "Abdul Moiz", avatarUrl: "" }}
+            title="Analytics"
+            subtitle="Welcome"
           />
 
           <div className="flex-1 p-6 overflow-auto">

@@ -18,18 +18,18 @@ export default function JobDetailsPage() {
             <Eye/>
           <AlertDescription className="font-medium"> Viewing as an applicant.</AlertDescription>
           </div>
-          <Button variant="outline" size="sm" className="bg-black text-white">
+          <Button variant="outline" size="sm" className="bg-foreground text-background">
             Go back
           </Button>
         </Alert>
         <Link href="/">
-        <div className="text-[#16A34A] text-3xl font-extrabold lg:hidden border-b pb-3 border-[#E4E4E7]">
+        <div className="text-[#16A34A] text-3xl font-extrabold lg:hidden border-b pb-3 border-border">
             Hiretics
         </div>
         </Link>
         <div className="flex justify-between items-start pt-10">
           <div >
-            <h1 className="text-[24 px] md:text-3xl text-[#09090B] font-[600]">Looking for a Web Developer</h1>
+            <h1 className="text-[24 px] md:text-3xl text-foreground font-[600]">Looking for a Web Developer</h1>
             <p className="text-[#52525B] font-normal mt-3 text-[16px]">Job Description</p>
           </div>
           <Button variant="ghost" size="icon" className="border rounded-full">
@@ -38,7 +38,7 @@ export default function JobDetailsPage() {
         </div>
 
       
-        <p className="text-sm text-[#09090B] leading-6">
+        <p className="text-sm text-foreground leading-6">
           Lorem ipsum dolor, sit amet consectetur adipisicing elit. Sunt temporibus laudantium aliquam voluptatum nihil, minus fugit eveniet? Maxime veritatis deserunt repudiandae dicta pariatur accusamus, enim magnam eligendi facere aliquam cumque minus, optio corporis voluptas tenetur maiores dignissimos delectus neque soluta esse. Excepturi, id sequi repellendus corrupti eos doloribus perspiciatis maxime. Expedita accusantium sit quos quaerat enim. Optio maxime tempora est corrupti eaque quisquam distinctio consequuntur accusamus nihil explicabo. Sed accusamus quis dignissimos sapiente tempore blanditiis necessitatibus aspernatur, mollitia molestiae quaerat alias corporis! Perferendis, sequi blanditiis tempora reiciendis aliquam natus ipsam aut sunt quas nesciunt aliquid laudantium quo laboriosam odio, veniam adipisci reprehenderit eligendi voluptatibus accusantium in rerum, officia laborum fugiat! Quasi placeat quam eum dolore laboriosam! Deserunt maiores nisi modi iusto voluptas dignissimos voluptatem molestias molestiae enim porro veritatis cupiditate officia aut perferendis nobis cum suscipit optio minima veniam, libero et magni alias! Maxime, praesentium. Quia ullam dolores illum minima doloremque, dolorum eum perferendis? Placeat dignissimos ipsa laudantium eum distinctio, ipsum officia id iure deserunt. Maxime, deserunt perspiciatis. Ut quibusdam eveniet pariatur dicta quis praesentium dolore, impedit eum dolores molestias corrupti ab aperiam! Deleniti, quas enim unde dignissimos labore quae, hic a quisquam, corporis qui repellat nihil ea consequatur perspiciatis.
         </p>
 
@@ -53,7 +53,7 @@ export default function JobDetailsPage() {
 
        
         <div>
-          <Button className="w-full bg-black text-white hover:bg-gray-900">
+          <Button className="w-full bg-foreground text-background hover:bg-foreground/90">
             <UploadCloud className="mr-2 h-4 w-4" />
             Upload CV
           </Button>

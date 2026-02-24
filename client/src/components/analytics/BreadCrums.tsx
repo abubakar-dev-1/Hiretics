@@ -24,7 +24,7 @@ import {
           <BreadcrumbSeparator className="text-[#16A34A]" />
      
           <BreadcrumbItem>
-            <BreadcrumbLink href="/docs/components" className="text-[#16A34A] underline">Looking for a Web Developer</BreadcrumbLink>
+            <BreadcrumbLink href="/" className="text-[#16A34A] underline">Campaign</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator className="text-[#16A34A]" />
           <BreadcrumbItem>

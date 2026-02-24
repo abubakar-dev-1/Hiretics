@@ -1,10 +1,25 @@
-import { IsString, IsOptional, IsBoolean, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsEnum, ValidateNested, IsObject } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum CampaignStatus {
   ONGOING = 'ongoing',
   COMPLETED = 'completed',
   NOT_STARTED = 'not-started',
   ARCHIVED = 'archived',
+}
+
+export interface SkillCriterion {
+  name: string;
+  weight: number;
+}
+
+export interface CampaignCriteria {
+  required_skills: SkillCriterion[];
+  preferred_universities: string[];
+  minimum_cgpa: number;
+  preferred_cities: string[];
+  minimum_experience_years: number;
+  required_keywords: string[];
 }
 
 export class CreateCampaignDto {
@@ -39,4 +54,7 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsString()
   end_date?: string;
+
+  @IsOptional()
+  criteria?: CampaignCriteria;
 }

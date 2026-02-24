@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 
 @Controller('analytics')
@@ -6,17 +6,32 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('age')
-  getAgeAnalytics() {
-    return this.analyticsService.getAgeStats();
+  getAgeAnalytics(@Query('campaign_id') campaignId?: string) {
+    return this.analyticsService.getAgeStats(campaignId);
   }
 
   @Get('university')
-  getUniversityAnalytics() {
-    return this.analyticsService.getUniversityStats();
+  getUniversityAnalytics(@Query('campaign_id') campaignId?: string) {
+    return this.analyticsService.getUniversityStats(campaignId);
   }
 
   @Get('city')
-  getCityAnalytics() {
-    return this.analyticsService.getCityStats();
+  getCityAnalytics(@Query('campaign_id') campaignId?: string) {
+    return this.analyticsService.getCityStats(campaignId);
+  }
+
+  @Get('overview')
+  getOverview(@Query('campaign_id') campaignId?: string) {
+    return this.analyticsService.getOverviewStats(campaignId);
+  }
+
+  @Get('scores')
+  getScoreDistribution(@Query('campaign_id') campaignId?: string) {
+    return this.analyticsService.getScoreDistribution(campaignId);
+  }
+
+  @Get('campaigns-summary')
+  getCampaignsSummary() {
+    return this.analyticsService.getCampaignsSummary();
   }
 }

@@ -8,10 +8,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Archive, CheckCircle, Clock, Loader2, MoreVertical } from "lucide-react";
+import { Archive, CheckCircle, Clock, Copy, MoreVertical, Pen, PlayCircle, RotateCcw, Trash2 } from "lucide-react";
 import { CardComponentProps } from "@/types/card-types";
 import { Plus, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const CardStatusIcon = ({
   status,
@@ -23,15 +31,15 @@ const CardStatusIcon = ({
   }
 
   if (status === "ongoing") {
-    return <Loader2 size={14} className="animate-spin text-gray-500" />;
+    return <PlayCircle size={14} className="text-[#16A34A]" />;
   }
 
   if (status === "archived") {
-    return <Archive size={14} className="text-gray-500" />;
+    return <Archive size={14} className="text-muted-foreground" />;
   }
 
   if (status === "not-started") {
-    return <Clock size={14} className="text-gray-500" />;
+    return <Clock size={14} className="text-muted-foreground" />;
   }
 
   return null;
@@ -51,7 +59,13 @@ export const CardComponent = ({
   className,
   isFavorite,
   onFavorite,
-  onOptions,
+  onEdit,
+  onArchive,
+  onCopyLink,
+  onRestore,
+  onDeletePermanently,
+  isSelected,
+  onSelectToggle,
 }: CardComponentProps) => {
   if (variant === "skeleton") {
     return (
@@ -83,66 +97,109 @@ export const CardComponent = ({
     <Card
       onClick={onClick}
       className={cn(
-        "rounded-lg shadow-sm transition-colors min-h-[200px] cursor-pointer flex justify-between hover:bg-[#F0FDF4]",
+        "rounded-lg shadow-sm transition-colors min-h-[200px] cursor-pointer flex justify-between hover:bg-[#16A34A]/10",
         variant === "create",
         highlight && "lg:bg-[#ECFDF5] lg:border lg:border-[#D1FADF] ",
+        isSelected && "border-[#16A34A] bg-[#16A34A]/5",
         className
       )}
     >
       {variant === "create" ? (
         <div className="hidden lg:flex h-40 flex-col items-center justify-center">
-          <div className="border-2 border-dashed border-black rounded-full p-3 mb-2">
-            <Plus className="h-6 w-6" />
+          <div className="border-2 border-dashed border-muted-foreground/40 rounded-full p-3 mb-2">
+            <Plus className="h-6 w-6 text-muted-foreground" />
           </div>
-          <p className="font-medium text-sm text-black">Create a Campaign</p>
+          <p className="font-medium text-sm text-muted-foreground">Create a Campaign</p>
         </div>
       ) : (
         <>
           <CardHeader className=" flex flex-row items-start justify-between">
             <div className="flex items-start justify-between w-full">
-              <div>
-                <CardTitle className="text-base">{title}</CardTitle>
-                {status && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                    <CardStatusIcon status={status} />
-                    <span className="capitalize">{status}</span>
-                  </div>
+              <div className="flex items-start gap-2">
+                {variant === "trash" && onSelectToggle && (
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(checked) => {
+                      onSelectToggle(!!checked);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1"
+                  />
                 )}
+                <div>
+                  <CardTitle className="text-base">{title}</CardTitle>
+                  {status && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                      <CardStatusIcon status={status} />
+                      <span className="capitalize">{status}</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-[4px]">
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (typeof onFavorite === 'function') onFavorite();
-                  }}
-                  className="focus:outline-none"
-                  tabIndex={0}
-                  aria-label="Mark as favorite"
-                >
-                  {variant === "trash" ? (
-                    null
-                  ) : (
-                    <Star size={16} className={isFavorite ? "text-yellow-400 fill-yellow-400 hover:cursor-pointer" : "text-gray-400 hover:cursor-pointer"} />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (typeof onOptions === 'function') onOptions();
-                  }}
-                  className="focus:outline-none"
-                  tabIndex={0}
-                  aria-label="Show options"
-                >
-                  {actions ?? (
-                    <MoreVertical
-                      size={16}
-                      className="text-gray-400 cursor-pointer"
-                    />
-                  )}
-                </button>
+                {variant !== "trash" && (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (typeof onFavorite === 'function') onFavorite();
+                    }}
+                    className="focus:outline-none"
+                    tabIndex={0}
+                    aria-label="Mark as favorite"
+                  >
+                    <Star size={16} className={isFavorite ? "text-yellow-400 fill-yellow-400 hover:cursor-pointer" : "text-muted-foreground hover:cursor-pointer"} />
+                  </button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => e.stopPropagation()}
+                      className="focus:outline-none"
+                      tabIndex={0}
+                      aria-label="Show options"
+                    >
+                      {actions ?? (
+                        <MoreVertical
+                          size={16}
+                          className="text-muted-foreground cursor-pointer"
+                        />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {variant === "trash" ? (
+                      <>
+                        <DropdownMenuItem onClick={() => onRestore?.()}>
+                          <RotateCcw size={14} />
+                          Restore
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onClick={() => onDeletePermanently?.()}>
+                          <Trash2 size={14} />
+                          Delete Permanently
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem onClick={() => onEdit?.()}>
+                          <Pen size={14} />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onCopyLink?.()}>
+                          <Copy size={14} />
+                          Copy Link
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onClick={() => onArchive?.()}>
+                          <Trash2 size={14} />
+                          Move to Trash
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </CardHeader>

@@ -4,15 +4,8 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, BarChart3, Users, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,6 +16,29 @@ import { useUserStore } from "@/store/userStore";
 interface LoginFormProps {
   onSubmit?: (email: string, password: string) => Promise<void>;
 }
+
+const features = [
+  {
+    icon: Users,
+    title: "Smart CV Ranking",
+    description: "AI ranks candidates so you find the best fit instantly",
+  },
+  {
+    icon: BarChart3,
+    title: "Rich Analytics",
+    description: "Insights on age, location, university and score distributions",
+  },
+  {
+    icon: Zap,
+    title: "Fast Campaign Setup",
+    description: "Create a campaign and start receiving CVs in minutes",
+  },
+  {
+    icon: Shield,
+    title: "Secure & Private",
+    description: "Your data is encrypted and never shared with third parties",
+  },
+];
 
 export default function LoginForm({ onSubmit }: LoginFormProps) {
   const router = useRouter();
@@ -46,22 +62,15 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
       if (onSubmit) {
         await onSubmit(email, password);
       } else {
-        console.log("Attempting to sign in...");
         const { data, error: signInError } =
           await supabase.auth.signInWithPassword({
             email,
             password,
           });
 
-        if (signInError) {
-          console.error("Sign in error:", signInError);
-          throw signInError;
-        }
-
-        console.log("Sign in response:", data);
+        if (signInError) throw signInError;
 
         if (data?.user) {
-          console.log("User data:", data.user);
           toast.success("Signed in successfully!");
           setUser(
             data.user.email ?? null,
@@ -79,16 +88,13 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
             router.push("/");
             router.refresh();
           } catch (navError) {
-            console.error("Navigation error:", navError);
             window.location.href = "/";
           }
         } else {
-          console.error("No user data in response");
           throw new Error("No user data received");
         }
       }
     } catch (err: any) {
-      console.error("Sign in error:", err);
       setError(err.message || "Invalid email or password. Please try again.");
     } finally {
       setIsLoading(false);
@@ -96,106 +102,152 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-amber-50 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold text-gray-900">
-            Welcome Back
-          </CardTitle>
-          <CardDescription className="text-gray-600">
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen flex">
+      {/* Left branded panel */}
+      <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] bg-[#16A34A] relative overflow-hidden flex-col justify-between p-10">
+        <div>
+          <div className="flex items-center gap-2 mb-16">
+            <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">H</span>
+            </div>
+            <span className="text-white text-xl font-bold tracking-tight">
+              Hiretics
+            </span>
+          </div>
+
+          <h2 className="text-white text-3xl font-bold leading-tight mb-3">
+            Hire smarter,
+            <br />
+            not harder.
+          </h2>
+          <p className="text-white/70 text-base mb-12">
+            AI-powered recruitment that saves you hours of manual CV screening.
+          </p>
+
+          <div className="space-y-5">
+            {features.map((feature) => (
+              <div key={feature.title} className="flex gap-3">
+                <div className="h-9 w-9 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                  <feature.icon size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-white text-sm font-semibold">
+                    {feature.title}
+                  </p>
+                  <p className="text-white/60 text-sm">
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-white/40 text-xs">
+          Trusted by recruiters worldwide
+        </p>
+
+        {/* Decorative circles */}
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-white/5" />
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5" />
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="h-9 w-9 rounded-lg bg-[#16A34A] flex items-center justify-center">
+              <span className="text-white font-bold text-lg">H</span>
+            </div>
+            <span className="text-foreground text-xl font-bold tracking-tight">
+              Hiretics
+            </span>
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Sign in to your account to continue
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-700">
+              <Alert className="border-destructive/50 bg-destructive/10">
+                <AlertDescription className="text-sm text-red-700 dark:text-red-400">
                   {error}
                 </AlertDescription>
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-sm font-medium text-gray-700"
-              >
-                Email Address
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 border-gray-200 focus:border-primary focus:ring-primary"
+                  className="pl-10 h-11"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-gray-700"
-              >
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm font-medium">
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 border-gray-200 focus:border-primary focus:ring-primary"
+                  className="pl-10 pr-10 h-11"
                   required
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <EyeOff className="h-4 w-4" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <Eye className="h-4 w-4" />
                   )}
-                  <span className="sr-only">
-                    {showPassword ? "Hide password" : "Show password"}
-                  </span>
-                </Button>
+                </button>
               </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full h-12 text-white font-medium"
-              style={{ backgroundColor: "#16A34A" }}
+              className="w-full h-11 bg-[#16A34A] hover:bg-[#15803D] text-white font-medium"
               disabled={isLoading}
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            {"Don't have an account? "}
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="font-medium hover:underline"
-              style={{ color: "#16A34A" }}
+              className="font-medium text-[#16A34A] hover:underline"
             >
-              Sign up here
+              Create account
             </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
