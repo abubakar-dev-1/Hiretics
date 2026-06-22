@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/lib/supabase";
+import { signIn } from "@/lib/auth";
 import { toast } from "sonner";
 import { useUserStore } from "@/store/userStore";
 
@@ -62,36 +62,18 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
       if (onSubmit) {
         await onSubmit(email, password);
       } else {
-        const { data, error: signInError } =
-          await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-        if (signInError) throw signInError;
-
-        if (data?.user) {
-          toast.success("Signed in successfully!");
-          setUser(
-            data.user.email ?? null,
-            data.user.user_metadata?.full_name ?? null
-          );
-          localStorage.setItem(
-            "user",
-            JSON.stringify({
-              id: data.user.id ?? null,
-              email: data.user.email ?? null,
-              displayName: data.user.user_metadata?.full_name ?? null,
-            })
-          );
-          try {
-            router.push("/");
-            router.refresh();
-          } catch (navError) {
-            window.location.href = "/";
-          }
-        } else {
-          throw new Error("No user data received");
+        const data = await signIn(email, password);
+        toast.success("Signed in successfully!");
+        setUser(data.user?.email ?? null, data.user?.fullName ?? null);
+        // Route by role: platform owner → console, candidate → portal, else dashboard.
+        const role = data.user?.role;
+        const dest =
+          role === "SuperAdmin" ? "/platform" : role === "Candidate" ? "/candidate" : "/";
+        try {
+          router.push(dest);
+          router.refresh();
+        } catch (navError) {
+          window.location.href = dest;
         }
       }
     } catch (err: any) {
@@ -244,6 +226,15 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
               className="font-medium text-[#16A34A] hover:underline"
             >
               Create account
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            Looking for a job?{" "}
+            <Link
+              href="/candidate/signup"
+              className="font-medium text-[#16A34A] hover:underline"
+            >
+              Sign up as a candidate
             </Link>
           </p>
         </div>

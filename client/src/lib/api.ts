@@ -1,9 +1,14 @@
-export const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+import { authHeaders } from "./auth";
+import { resilientFetch } from "./http";
+
+// All dashboard API calls go to the serverless API Gateway (LocalStack).
+export const BASE_URL = process.env.NEXT_PUBLIC_SERVERLESS_API || "";
 
 export async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await resilientFetch(`${BASE_URL}${endpoint}`, {
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders(),
       ...(options?.headers || {}),
     },
     ...options,
@@ -12,4 +17,4 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
     throw new Error(await res.text());
   }
   return res.json();
-} 
+}

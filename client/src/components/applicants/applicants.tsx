@@ -16,7 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import { useEffect, useState, useRef, useCallback } from "react"
-import { getCampaign } from "@/api/campaign/api"
+import { getPublicCampaign } from "@/api/campaign/api"
 import { Campaign } from "@/types/campaign"
 import { uploadCV } from "@/api/cv/api"
 import { toast } from "sonner"
@@ -144,7 +144,7 @@ export default function Applicants({ id }: ApplicantsProps) {
   useEffect(() => {
     if (id) {
       setLoading(true)
-      getCampaign(id)
+      getPublicCampaign(id)
         .then(setCampaign)
         .catch(console.error)
         .finally(() => setLoading(false))

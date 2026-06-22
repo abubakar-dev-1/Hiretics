@@ -24,6 +24,7 @@ import {
   UploadCloud,
   Briefcase,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -43,6 +44,11 @@ import { toast } from "sonner";
 import { TagInput } from "./TagInput";
 import { SkillTagInput } from "./SkillTagInput";
 import { CampaignCriteria, SkillCriterion } from "@/types/campaign";
+import {
+  assistCampaign,
+  UpgradeRequiredError,
+  type AssistAction,
+} from "@/api/ai/api";
 
 type CreateCampaignProps = {
   open: boolean;
@@ -93,10 +99,72 @@ export default function CreateCampaign({
     startDate: initialValues?.startDate || null,
     endDate: initialValues?.endDate || null,
     criteria: initialValues?.criteria || { ...emptyCriteria },
+    visibility: (initialValues as any)?.visibility || "private",
   });
   const [errors, setErrors] = useState<any>({});
   const [showValidationError, setShowValidationError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // AI authoring assist (Phase 8)
+  const [aiAction, setAiAction] = useState<AssistAction | null>(null);
+  const [aiRemaining, setAiRemaining] = useState<number | null | undefined>(undefined);
+
+  const runAssist = async (action: AssistAction) => {
+    if (
+      (action === "description" || action === "criteria" || action === "all") &&
+      !formData.role &&
+      !formData.title
+    ) {
+      toast.error("Add a title or role first so the AI has context");
+      return;
+    }
+    setAiAction(action);
+    try {
+      const { result, entitlement } = await assistCampaign(action, {
+        jobTitle: formData.title,
+        jobRole: formData.role,
+        jobDescription: formData.description,
+        notes: formData.company ? `Company: ${formData.company}` : undefined,
+      });
+      setFormData((prev) => ({
+        ...prev,
+        title: result.title ?? prev.title,
+        role: result.job_role ?? prev.role,
+        description: result.job_description ?? prev.description,
+        criteria: result.criteria
+          ? { ...prev.criteria, ...result.criteria }
+          : prev.criteria,
+      }));
+      setAiRemaining(entitlement.unlimited ? null : entitlement.remaining);
+      toast.success(
+        entitlement.unlimited
+          ? "AI suggestions added"
+          : `AI suggestions added · ${entitlement.remaining} free left`,
+      );
+    } catch (e: any) {
+      if (e instanceof UpgradeRequiredError) {
+        toast.error(e.message);
+      } else {
+        toast.error("AI suggestion failed");
+        console.error(e);
+      }
+    } finally {
+      setAiAction(null);
+    }
+  };
+
+  const aiButton = (action: AssistAction, label: string) => (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={() => runAssist(action)}
+      disabled={aiAction !== null || isLoading}
+      className="h-7 px-2 text-xs text-[#16A34A] hover:bg-[#16A34A]/10 cursor-pointer"
+    >
+      <Sparkles className="h-3.5 w-3.5 mr-1" />
+      {aiAction === action ? "Generating…" : label}
+    </Button>
+  );
 
   useEffect(() => {
     if (open && initialValues) {
@@ -108,6 +176,7 @@ export default function CreateCampaign({
         startDate: initialValues.startDate || null,
         endDate: initialValues.endDate || null,
         criteria: initialValues.criteria || { ...emptyCriteria },
+        visibility: (initialValues as any).visibility || "private",
       });
       setStep(1);
       setErrors({});
@@ -167,6 +236,7 @@ export default function CreateCampaign({
       startDate: null,
       endDate: null,
       criteria: { ...emptyCriteria },
+      visibility: "private",
     });
     setErrors({});
     setShowValidationError(false);
@@ -207,6 +277,7 @@ export default function CreateCampaign({
     if (criteriaPayload) {
       campaignData.criteria = criteriaPayload;
     }
+    campaignData.visibility = formData.visibility;
 
     try {
       if (editMode && onSave) {
@@ -282,14 +353,25 @@ export default function CreateCampaign({
                 ? "Scoring Criteria (Optional)"
                 : ""}
             </p>
+            {step < 4 && aiRemaining !== undefined && (
+              <p className="text-[11px] text-[#16A34A] mt-1 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                {aiRemaining === null
+                  ? "Pro — unlimited AI authoring"
+                  : `${aiRemaining} free AI generation${aiRemaining === 1 ? "" : "s"} left`}
+              </p>
+            )}
           </DialogHeader>
 
           {step === 1 && (
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-primary">
-                  Title
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-primary">
+                    Title
+                  </Label>
+                  {aiButton("title", "AI Suggest")}
+                </div>
                 <Input
                   value={formData.title}
                   onChange={(e) =>
@@ -398,11 +480,38 @@ export default function CreateCampaign({
                   </Avatar>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3 rounded-md border border-border p-3">
+                <input
+                  type="checkbox"
+                  id="visibility"
+                  checked={formData.visibility === "public"}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      visibility: e.target.checked ? "public" : "private",
+                    })
+                  }
+                  className="h-4 w-4 mt-0.5 accent-[#16A34A]"
+                />
+                <Label htmlFor="visibility" className="text-sm font-normal cursor-pointer">
+                  <span className="font-medium text-primary">List on the public job board</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Candidates can discover this role, tailor their CV to it, and apply in one click.
+                  </span>
+                </Label>
+              </div>
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-6">
+              <div className="flex items-center justify-between rounded-md bg-[#16A34A]/5 border border-[#16A34A]/20 px-3 py-2">
+                <span className="text-xs text-muted-foreground">
+                  Let AI draft the role, description &amp; criteria for you.
+                </span>
+                {aiButton("all", "Generate all")}
+              </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-primary">
                   Role Required
@@ -421,9 +530,12 @@ export default function CreateCampaign({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-primary">
-                  Job Description
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-primary">
+                    Job Description
+                  </Label>
+                  {aiButton("description", "Generate with AI")}
+                </div>
                 <Textarea
                   value={formData.description}
                   onChange={(e) =>
@@ -441,6 +553,9 @@ export default function CreateCampaign({
 
           {step === 3 && (
             <div className="space-y-5 max-h-[50vh] overflow-y-auto pr-1">
+              <div className="flex items-center justify-end">
+                {aiButton("criteria", "Suggest criteria with AI")}
+              </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-primary">
                   Required Skills

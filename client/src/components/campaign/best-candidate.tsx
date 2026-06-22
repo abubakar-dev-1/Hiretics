@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getApplicants } from "@/api/cv/api";
+import { getSocket } from "@/lib/socket";
+import { toast } from "sonner";
 import { getCampaign } from "@/api/campaign/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -348,6 +350,22 @@ export function BestCandidates({
         .finally(() => setLoading(false));
     }
   }, [campaignId, refreshKey]);
+
+  // Live updates: when the worker scores a CV for this campaign, refetch.
+  useEffect(() => {
+    if (!campaignId) return;
+    const socket = getSocket();
+    if (!socket) return;
+    const onScored = (payload: { campaignId?: string; name?: string; score?: number }) => {
+      if (payload?.campaignId !== campaignId) return;
+      toast.success(`New candidate scored: ${payload.name ?? "Applicant"} (${payload.score ?? 0})`);
+      getApplicants(campaignId).then(setCandidates).catch(console.error);
+    };
+    socket.on("candidate.scored", onScored);
+    return () => {
+      socket.off("candidate.scored", onScored);
+    };
+  }, [campaignId]);
 
   const relevantCandidates = candidates.filter(
     (c) => c.relevance !== "irrelevant"

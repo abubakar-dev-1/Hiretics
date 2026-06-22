@@ -1,22 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { isAuthenticated } from "@/lib/auth";
 import Home from "@/components/HomePage";
 import LandingPage from "@/components/landing/LandingPage";
 
 export default function Page() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-    });
+    setAuthed(isAuthenticated());
   }, []);
 
-  if (isAuthenticated === null) {
+  if (authed === null) {
     return null;
   }
 
-  return isAuthenticated ? <Home /> : <LandingPage />;
+  return authed ? <Home /> : <LandingPage />;
 }

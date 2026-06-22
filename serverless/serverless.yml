@@ -1,0 +1,675 @@
+service: hiretics-serverless
+frameworkVersion: '3'
+useDotenv: true
+
+plugins:
+  - serverless-esbuild
+  - serverless-localstack
+
+custom:
+  # serverless-localstack: only redirect to LocalStack on the `local` stage.
+  localstack:
+    stages:
+      - local
+    host: http://localhost
+    edgePort: 4566
+    autostart: false
+  esbuild:
+    bundle: true
+    minify: false
+    target: node18
+    platform: node
+    # sourcemaps disabled: they roughly doubled each function package (→27 MB),
+    # slowing LocalStack deploy and Lambda cold starts. Off = smaller, faster.
+    sourcemap: false
+    # AWS SDK v3 ships inside the nodejs18.x runtime — don't bundle it (smaller
+    # bundles => much faster Lambda cold starts on LocalStack).
+    external:
+      - '@aws-sdk/*'
+  tableNames:
+    companies: ${self:service}-companies-${sls:stage}
+    users: ${self:service}-users-${sls:stage}
+    campaigns: ${self:service}-campaigns-${sls:stage}
+    candidates: ${self:service}-candidates-${sls:stage}
+    transactions: ${self:service}-transactions-${sls:stage}
+    cvThreads: ${self:service}-cv-threads-${sls:stage}
+    cvVersions: ${self:service}-cv-versions-${sls:stage}
+    cvComparisons: ${self:service}-cv-comparisons-${sls:stage}
+  resumesBucket: ${self:service}-resumes-${sls:stage}
+  resumeQueue: ${self:service}-resume-queue-${sls:stage}
+  resumeDlq: ${self:service}-resume-dlq-${sls:stage}
+  analysisBucket: ${self:service}-analysis-${sls:stage}
+  analysisQueue: ${self:service}-analysis-queue-${sls:stage}
+  analysisDlq: ${self:service}-analysis-dlq-${sls:stage}
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'local'}
+  # Default 6s is too tight for LocalStack cold starts (bundle load + first
+  # DynamoDB/S3 connection). 30s gives every function headroom; the SQS workers
+  # override to 120s below.
+  timeout: 30
+  environment:
+    STAGE: ${sls:stage}
+    COMPANIES_TABLE: ${self:custom.tableNames.companies}
+    USERS_TABLE: ${self:custom.tableNames.users}
+    CAMPAIGNS_TABLE: ${self:custom.tableNames.campaigns}
+    CANDIDATES_TABLE: ${self:custom.tableNames.candidates}
+    TRANSACTIONS_TABLE: ${self:custom.tableNames.transactions}
+    CV_THREADS_TABLE: ${self:custom.tableNames.cvThreads}
+    CV_VERSIONS_TABLE: ${self:custom.tableNames.cvVersions}
+    CV_COMPARISONS_TABLE: ${self:custom.tableNames.cvComparisons}
+    RESUMES_BUCKET: ${self:custom.resumesBucket}
+    ANALYSIS_BUCKET: ${self:custom.analysisBucket}
+    RESUME_QUEUE_URL: { Ref: ResumeProcessingQueue }
+    RESUME_DLQ_URL: { Ref: ResumeProcessingDLQ }
+    ANALYSIS_QUEUE_URL: { Ref: AnalysisQueue }
+    ANALYSIS_DLQ_URL: { Ref: AnalysisDLQ }
+    S3_PUBLIC_ENDPOINT: http://localhost:4566
+    # Injected from .env (useDotenv). Never hard-code secrets here.
+    AI_PROVIDER: ${env:AI_PROVIDER, 'mock'}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
+    OPENAI_MODEL: ${env:OPENAI_MODEL, 'gpt-4o-mini'}
+    GEMINI_API_KEY: ${env:GEMINI_API_KEY, ''}
+    JWT_SECRET: ${env:JWT_SECRET, 'dev-secret'}
+    # Worker reaches the host-run Socket.io server via the Docker bridge host.
+    SOCKET_SERVER_URL: http://host.docker.internal:4000
+    EMIT_SECRET: ${env:EMIT_SECRET, 'worker-emit-secret'}
+    # Phase 9: payments. Defaults to the offline `mock` provider (no Stripe needed).
+    BILLING_PROVIDER: ${env:BILLING_PROVIDER, 'mock'}
+    STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY, ''}
+    STRIPE_WEBHOOK_SECRET: ${env:STRIPE_WEBHOOK_SECRET, ''}
+    APP_URL: ${env:APP_URL, 'http://localhost:3000'}
+    # Phase 10: one-time platform-owner (SuperAdmin) bootstrap guard.
+    PLATFORM_BOOTSTRAP_SECRET: ${env:PLATFORM_BOOTSTRAP_SECRET, 'change-me-bootstrap'}
+
+functions:
+  # Phase 0: a single health endpoint to validate the whole deploy toolchain
+  # (esbuild + serverless-localstack + CloudFormation) end to end.
+  health:
+    handler: src/handlers/health.handler
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+  # Phase 1: candidate requests a presigned URL, then uploads the PDF to S3.
+  candidatePresign:
+    handler: src/handlers/candidate/presign.handler
+    events:
+      - http:
+          path: /candidates/presign
+          method: post
+          cors: true
+
+  # Phase 1: SQS-triggered worker — the heart of the event-driven pipeline.
+  worker:
+    handler: src/handlers/worker/process.handler
+    timeout: 120
+    events:
+      - sqs:
+          arn: { 'Fn::GetAtt': [ResumeProcessingQueue, Arn] }
+          batchSize: 1
+
+  # Phase 2: read APIs (auth/company-scoping added in Phase 3).
+  campaignPublic:
+    handler: src/handlers/campaign/public.handler
+    events:
+      - http:
+          path: /public/campaigns/{hash}
+          method: get
+          cors: true
+
+  candidateList:
+    handler: src/handlers/candidate/list.handler
+    events:
+      - http:
+          path: /campaigns/{id}/candidates
+          method: get
+          cors: true
+
+  candidateGet:
+    handler: src/handlers/candidate/get.handler
+    events:
+      - http:
+          path: /candidates/{id}
+          method: get
+          cors: true
+
+  # Phase 3: custom JWT + bcrypt auth.
+  authSignup:
+    handler: src/handlers/auth/signup.handler
+    events:
+      - http:
+          path: /auth/signup
+          method: post
+          cors: true
+  authSignin:
+    handler: src/handlers/auth/signin.handler
+    events:
+      - http:
+          path: /auth/signin
+          method: post
+          cors: true
+  authSession:
+    handler: src/handlers/auth/session.handler
+    events:
+      - http:
+          path: /auth/session
+          method: get
+          cors: true
+  authSignout:
+    handler: src/handlers/auth/signout.handler
+    events:
+      - http:
+          path: /auth/signout
+          method: post
+          cors: true
+
+  # Phase 4: campaign CRUD (auth + company-scoped).
+  campaignCreate:
+    handler: src/handlers/campaign/create.handler
+    events:
+      - http: { path: /campaigns, method: post, cors: true }
+  campaignList:
+    handler: src/handlers/campaign/list.handler
+    events:
+      - http: { path: /campaigns, method: get, cors: true }
+  campaignGet:
+    handler: src/handlers/campaign/get.handler
+    events:
+      - http: { path: '/campaigns/{id}', method: get, cors: true }
+  campaignUpdate:
+    handler: src/handlers/campaign/update.handler
+    events:
+      - http: { path: '/campaigns/{id}', method: put, cors: true }
+  campaignDelete:
+    handler: src/handlers/campaign/remove.handler
+    events:
+      - http: { path: '/campaigns/{id}', method: delete, cors: true }
+
+  # Phase 4: company, credits, recruiters (RBAC).
+  companyGet:
+    handler: src/handlers/company/get.handler
+    events:
+      - http: { path: /company, method: get, cors: true }
+  creditsAdd:
+    handler: src/handlers/credits/add.handler
+    events:
+      - http: { path: /credits/add, method: post, cors: true }
+  recruitersList:
+    handler: src/handlers/recruiters/list.handler
+    events:
+      - http: { path: /recruiters, method: get, cors: true }
+  recruitersInvite:
+    handler: src/handlers/recruiters/invite.handler
+    events:
+      - http: { path: /recruiters, method: post, cors: true }
+  recruitersRemove:
+    handler: src/handlers/recruiters/remove.handler
+    events:
+      - http: { path: '/recruiters/{id}', method: delete, cors: true }
+
+  # Phase 8: AI campaign-authoring assist (entitlement-gated: 3 free, then Pro).
+  aiAuthor:
+    handler: src/handlers/ai/author.handler
+    timeout: 30
+    events:
+      - http: { path: /ai/author, method: post, cors: true }
+
+  # Phase 9: payments — credit packs + Pro upgrade (Stripe webhook / offline mock).
+  billingPacks:
+    handler: src/handlers/billing/packs.handler
+    events:
+      - http: { path: /billing/packs, method: get, cors: true }
+  billingCheckout:
+    handler: src/handlers/billing/checkout.handler
+    timeout: 30
+    events:
+      - http: { path: /billing/checkout, method: post, cors: true }
+  billingWebhook:
+    handler: src/handlers/billing/webhook.handler
+    events:
+      - http: { path: /billing/webhook, method: post, cors: true }
+  billingMockConfirm:
+    handler: src/handlers/billing/mockConfirm.handler
+    events:
+      - http: { path: /billing/mock-confirm, method: post, cors: true }
+  billingTransactions:
+    handler: src/handlers/billing/transactions.handler
+    events:
+      - http: { path: /billing/transactions, method: get, cors: true }
+
+  # Phase 10: Platform-Owner / Super-Admin console.
+  adminBootstrap:
+    handler: src/handlers/admin/bootstrap.handler
+    events:
+      - http: { path: /admin/bootstrap, method: post, cors: true }
+  adminInfra:
+    handler: src/handlers/admin/infra.handler
+    timeout: 30
+    events:
+      - http: { path: /admin/infra, method: get, cors: true }
+  adminTenants:
+    handler: src/handlers/admin/tenants.handler
+    timeout: 30
+    events:
+      - http: { path: /admin/tenants, method: get, cors: true }
+  adminTenantSuspend:
+    handler: src/handlers/admin/tenantSuspend.handler
+    events:
+      - http: { path: '/admin/tenants/{id}/suspend', method: post, cors: true }
+  adminTenantCredits:
+    handler: src/handlers/admin/tenantCredits.handler
+    events:
+      - http: { path: '/admin/tenants/{id}/credits', method: post, cors: true }
+  adminRevenue:
+    handler: src/handlers/admin/revenue.handler
+    timeout: 30
+    events:
+      - http: { path: /admin/revenue, method: get, cors: true }
+
+  # Phase 11: candidate side (RoleNorth merge) — accounts, analysis pipeline, job board.
+  candidateSignup:
+    handler: src/handlers/auth/candidateSignup.handler
+    events:
+      - http: { path: /auth/candidate-signup, method: post, cors: true }
+
+  cvPresign:
+    handler: src/handlers/cv/presign.handler
+    events:
+      - http: { path: /candidate/cv/presign, method: post, cors: true }
+  cvAnalysisWorker:
+    handler: src/handlers/cv/analysisWorker.handler
+    timeout: 120
+    events:
+      - sqs:
+          arn: { 'Fn::GetAtt': [AnalysisQueue, Arn] }
+          batchSize: 1
+  cvThreads:
+    handler: src/handlers/cv/threads.handler
+    events:
+      - http: { path: /candidate/threads, method: get, cors: true }
+  cvThread:
+    handler: src/handlers/cv/thread.handler
+    events:
+      - http: { path: '/candidate/threads/{id}', method: get, cors: true }
+  cvGet:
+    handler: src/handlers/cv/get.handler
+    events:
+      - http: { path: '/candidate/cv/{id}', method: get, cors: true }
+  cvCompare:
+    handler: src/handlers/cv/compare.handler
+    timeout: 30
+    events:
+      - http: { path: /candidate/compare, method: post, cors: true }
+  cvComparisons:
+    handler: src/handlers/cv/comparisons.handler
+    events:
+      - http: { path: /candidate/comparisons, method: get, cors: true }
+
+  jobsList:
+    handler: src/handlers/jobs/list.handler
+    timeout: 30
+    events:
+      - http: { path: /jobs, method: get, cors: true }
+  jobsGet:
+    handler: src/handlers/jobs/get.handler
+    events:
+      - http: { path: '/jobs/{id}', method: get, cors: true }
+  candidateTailor:
+    handler: src/handlers/candidate/tailor.handler
+    timeout: 30
+    events:
+      - http: { path: /candidate/tailor, method: post, cors: true }
+  candidateApply:
+    handler: src/handlers/candidate/apply.handler
+    timeout: 30
+    events:
+      - http: { path: /candidate/apply, method: post, cors: true }
+
+  # Phase 4/6: analytics.
+  analyticsAge:
+    handler: src/handlers/analytics/stats.age
+    events:
+      - http: { path: /analytics/age, method: get, cors: true }
+  analyticsCity:
+    handler: src/handlers/analytics/stats.city
+    events:
+      - http: { path: /analytics/city, method: get, cors: true }
+  analyticsUniversity:
+    handler: src/handlers/analytics/stats.university
+    events:
+      - http: { path: /analytics/university, method: get, cors: true }
+  analyticsOverview:
+    handler: src/handlers/analytics/stats.overview
+    events:
+      - http: { path: /analytics/overview, method: get, cors: true }
+  analyticsScores:
+    handler: src/handlers/analytics/stats.scores
+    events:
+      - http: { path: /analytics/scores, method: get, cors: true }
+  analyticsCampaignsSummary:
+    handler: src/handlers/analytics/stats.campaignsSummary
+    events:
+      - http: { path: /analytics/campaigns-summary, method: get, cors: true }
+
+resources:
+  Resources:
+
+    CompaniesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.companies}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: companyId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: companyId
+            KeyType: HASH
+
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.users}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+          - AttributeName: companyId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: CompanyIndex
+            KeySchema:
+              - AttributeName: companyId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    CampaignsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.campaigns}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: campaignId
+            AttributeType: S
+          - AttributeName: companyId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+          - AttributeName: publicHash
+            AttributeType: S
+        KeySchema:
+          - AttributeName: campaignId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CompanyIndex
+            KeySchema:
+              - AttributeName: companyId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: PublicHashIndex
+            KeySchema:
+              - AttributeName: publicHash
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    CandidatesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.candidates}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: candidateId
+            AttributeType: S
+          - AttributeName: campaignId
+            AttributeType: S
+          - AttributeName: aiScore
+            AttributeType: N
+        KeySchema:
+          - AttributeName: candidateId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          # Ranked list per campaign. Candidates get aiScore=0 on creation so
+          # pending ones are indexed too; `status` distinguishes pending vs scored.
+          - IndexName: CampaignScoreIndex
+            KeySchema:
+              - AttributeName: campaignId
+                KeyType: HASH
+              - AttributeName: aiScore
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    TransactionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.transactions}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: txnId
+            AttributeType: S
+          - AttributeName: companyId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: txnId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CompanyIndex
+            KeySchema:
+              - AttributeName: companyId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    CVThreadsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.cvThreads}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: threadId
+            AttributeType: S
+          - AttributeName: candidateId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: threadId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CandidateIndex
+            KeySchema:
+              - AttributeName: candidateId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    CVVersionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.cvVersions}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: cvId
+            AttributeType: S
+          - AttributeName: candidateId
+            AttributeType: S
+          - AttributeName: threadId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: cvId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CandidateIndex
+            KeySchema:
+              - AttributeName: candidateId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ThreadIndex
+            KeySchema:
+              - AttributeName: threadId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    CVComparisonsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.cvComparisons}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: comparisonId
+            AttributeType: S
+          - AttributeName: candidateId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: comparisonId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CandidateIndex
+            KeySchema:
+              - AttributeName: candidateId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    ResumesBucket:
+      Type: AWS::S3::Bucket
+      # Notification refers to the queue, which must allow S3 to publish first.
+      DependsOn: ResumeQueuePolicy
+      Properties:
+        BucketName: ${self:custom.resumesBucket}
+        # Browser direct-to-S3 upload needs CORS for the presigned PUT.
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins: ['*']
+              AllowedMethods: [PUT, POST, GET, HEAD]
+              AllowedHeaders: ['*']
+              MaxAge: 3000
+        # Every uploaded object fires an event into the processing queue.
+        NotificationConfiguration:
+          QueueConfigurations:
+            - Event: 's3:ObjectCreated:*'
+              Queue: { 'Fn::GetAtt': [ResumeProcessingQueue, Arn] }
+
+    # Allow the S3 bucket to send messages to the processing queue.
+    ResumeQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - { Ref: ResumeProcessingQueue }
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal: '*'
+              Action: 'sqs:SendMessage'
+              Resource: { 'Fn::GetAtt': [ResumeProcessingQueue, Arn] }
+              Condition:
+                ArnLike:
+                  aws:SourceArn: arn:aws:s3:::${self:custom.resumesBucket}
+
+    ResumeProcessingDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.resumeDlq}
+        MessageRetentionPeriod: 1209600   # 14 days
+
+    ResumeProcessingQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.resumeQueue}
+        VisibilityTimeout: 180
+        RedrivePolicy:
+          deadLetterTargetArn: { 'Fn::GetAtt': [ResumeProcessingDLQ, Arn] }
+          maxReceiveCount: 3
+
+    # ── Phase 11: candidate CV-analysis pipeline (second event-driven pipeline) ──
+    AnalysisBucket:
+      Type: AWS::S3::Bucket
+      DependsOn: AnalysisQueuePolicy
+      Properties:
+        BucketName: ${self:custom.analysisBucket}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins: ['*']
+              AllowedMethods: [PUT, POST, GET, HEAD]
+              AllowedHeaders: ['*']
+              MaxAge: 3000
+        NotificationConfiguration:
+          QueueConfigurations:
+            - Event: 's3:ObjectCreated:*'
+              Queue: { 'Fn::GetAtt': [AnalysisQueue, Arn] }
+
+    AnalysisQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - { Ref: AnalysisQueue }
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal: '*'
+              Action: 'sqs:SendMessage'
+              Resource: { 'Fn::GetAtt': [AnalysisQueue, Arn] }
+              Condition:
+                ArnLike:
+                  aws:SourceArn: arn:aws:s3:::${self:custom.analysisBucket}
+
+    AnalysisDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.analysisDlq}
+        MessageRetentionPeriod: 1209600
+
+    AnalysisQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.analysisQueue}
+        VisibilityTimeout: 180
+        RedrivePolicy:
+          deadLetterTargetArn: { 'Fn::GetAtt': [AnalysisDLQ, Arn] }
+          maxReceiveCount: 3

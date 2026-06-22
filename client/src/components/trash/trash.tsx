@@ -9,6 +9,7 @@ import { getCampaigns, deleteCampaign, restoreCampaign } from "@/api/campaign/ap
 import { Campaign } from "@/types/campaign";
 import { useRouter } from "next/navigation";
 import { getApplicants } from "@/api/cv/api";
+import { mapLimit } from "@/lib/http";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -42,19 +43,17 @@ export default function Trash() {
       .then(async (campaigns) => {
         setCampaigns(campaigns);
         const counts: Record<string, number> = {};
-        await Promise.all(
-          campaigns.map(async (campaign) => {
-            if (campaign.id) {
-              try {
-                const applicants = await getApplicants(campaign.id);
-                counts[campaign.id] = applicants.length;
-              } catch (error) {
-                console.error(`Error fetching applicants for campaign ${campaign.id}:`, error);
-                counts[campaign.id] = 0;
-              }
+        await mapLimit(campaigns, 2, async (campaign) => {
+          if (campaign.id) {
+            try {
+              const applicants = await getApplicants(campaign.id);
+              counts[campaign.id] = applicants.length;
+            } catch (error) {
+              console.error(`Error fetching applicants for campaign ${campaign.id}:`, error);
+              counts[campaign.id] = 0;
             }
-          })
-        );
+          }
+        });
         setApplicantsCount(counts);
       })
       .catch(console.error)

@@ -1,18 +1,15 @@
 import { apiRequest } from "@/lib/api";
+import { authHeaders } from "@/lib/auth";
+import { resilientFetch } from "@/lib/http";
 import { Campaign } from "@/types/campaign";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const BASE = process.env.NEXT_PUBLIC_SERVERLESS_API || "";
 
-function getUserId(): string {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user.id || "";
-}
-
-function buildUrl(path: string): string {
-  const userId = getUserId();
-  const url = new URL(`${BASE_URL}${path}`);
-  if (userId) url.searchParams.append("user_id", userId);
-  return url.toString();
+function authedFetch(path: string, options?: RequestInit) {
+  return resilientFetch(`${BASE}${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...authHeaders(), ...(options?.headers || {}) },
+  });
 }
 
 export async function createCampaign(data: Campaign) {
@@ -23,110 +20,44 @@ export async function createCampaign(data: Campaign) {
 }
 
 export const getCampaigns = async (isArchived?: boolean): Promise<Campaign[]> => {
-  const userId = getUserId();
-  const params = new URLSearchParams();
-  if (userId) params.append("user_id", userId);
-  if (isArchived !== undefined) params.append("is_archived", String(isArchived));
-  const qs = params.toString() ? `?${params.toString()}` : '';
+  const qs = isArchived !== undefined ? `?is_archived=${isArchived}` : "";
   return apiRequest<Campaign[]>(`/campaigns${qs}`);
 };
 
+// Backend has no dedicated favourites route — filter client-side.
 export const getFavouriteCampaigns = async (): Promise<Campaign[]> => {
-  const userId = getUserId();
-  const params = new URLSearchParams();
-  if (userId) params.append("user_id", userId);
-  const qs = params.toString() ? `?${params.toString()}` : '';
-  return apiRequest<Campaign[]>(`/campaigns/favourite${qs}`);
+  const all = await getCampaigns();
+  return all.filter((c) => c.is_favorite);
 };
 
 export const getCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`));
-  if (!response.ok) {
-    throw new Error('Failed to fetch campaign');
-  }
-  return response.json();
+  const res = await authedFetch(`/campaigns/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch campaign");
+  return res.json();
 };
 
-export const archiveCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_archived: true, status: 'completed' }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to archive campaign');
-  }
-  return response.json();
+// Public apply page fetches a campaign by its secure hash (no auth).
+export const getPublicCampaign = async (hash: string): Promise<Campaign> => {
+  const res = await resilientFetch(`${BASE}/public/campaigns/${hash}`);
+  if (!res.ok) throw new Error("Failed to fetch campaign");
+  return res.json();
 };
 
-export const favoriteCampaign = async (id: string, isFavorite?: boolean): Promise<Campaign> => {
-  const body: any = {};
-  if (typeof isFavorite === "boolean") body.is_favorite = isFavorite;
-
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to favorite campaign');
-  }
-  return response.json();
+const update = async (id: string, body: Record<string, unknown>): Promise<Campaign> => {
+  const res = await authedFetch(`/campaigns/${id}`, { method: "PUT", body: JSON.stringify(body) });
+  if (!res.ok) throw new Error("Failed to update campaign");
+  return res.json();
 };
 
-export const updateCampaign = async (id: string, data: any): Promise<Campaign> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to update campaign');
-  }
-  return response.json();
-};
-
-export const startCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'ongoing' }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to start campaign');
-  }
-  return response.json();
-};
-
-export const stopCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'completed' }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to end campaign');
-  }
-  return response.json();
-};
+export const archiveCampaign = (id: string) => update(id, { is_archived: true, status: "completed" });
+export const favoriteCampaign = (id: string, isFavorite?: boolean) =>
+  update(id, typeof isFavorite === "boolean" ? { is_favorite: isFavorite } : {});
+export const updateCampaign = (id: string, data: Record<string, unknown>) => update(id, data);
+export const startCampaign = (id: string) => update(id, { status: "ongoing" });
+export const stopCampaign = (id: string) => update(id, { status: "completed" });
+export const restoreCampaign = (id: string) => update(id, { is_archived: false });
 
 export const deleteCampaign = async (id: string): Promise<void> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to delete campaign');
-  }
-};
-
-export const restoreCampaign = async (id: string): Promise<Campaign> => {
-  const response = await fetch(buildUrl(`/campaigns/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_archived: false }),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to restore campaign');
-  }
-  return response.json();
+  const res = await authedFetch(`/campaigns/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete campaign");
 };

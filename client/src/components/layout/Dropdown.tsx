@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Props } from "@/types/dropdown-types"
-import { supabase } from "@/lib/supabase"
+import { signOut } from "@/lib/auth"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -19,7 +19,7 @@ export function DropdownMenuButton({ name, avatarUrl }: Props) {
   const router = useRouter()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    signOut()
     toast.success("Logged out successfully!")
     router.replace("/signin")
   }

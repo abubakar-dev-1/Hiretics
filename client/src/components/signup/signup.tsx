@@ -9,9 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/lib/supabase";
+import { signUp } from "@/lib/auth";
 import { toast } from "sonner";
-import axios from "axios";
 
 interface SignupFormProps {
   onSubmit?: (name: string, email: string, password: string) => Promise<void>;
@@ -84,26 +83,14 @@ export default function SignupForm({ onSubmit }: SignupFormProps) {
       if (onSubmit) {
         await onSubmit(name, email, password);
       } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name },
-          },
-        });
-
-        if (signUpError) throw signUpError;
-
-        if (data?.user) {
-          await axios.post(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL_SUBSCRIPTION}/subs`,
-            {
-              user_id: data.user.id,
-              plan: "free",
-            }
-          );
-          toast.success("Account created! Please check your email to verify.");
-          router.push("/signin");
+        // Creates the company + admin user and logs in (returns a JWT).
+        await signUp({ companyName: `${name}'s Company`, fullName: name, email, password });
+        toast.success("Account created!");
+        try {
+          router.push("/");
+          router.refresh();
+        } catch {
+          window.location.href = "/";
         }
       }
     } catch (err: any) {

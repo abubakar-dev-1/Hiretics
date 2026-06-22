@@ -1,0 +1,53 @@
+{
+  "name": "hiretics-serverless",
+  "version": "0.1.0",
+  "description": "Hiretics event-driven serverless backend (LocalStack)",
+  "private": true,
+  "scripts": {
+    "ls:up": "docker compose up -d",
+    "ls:down": "docker compose down",
+    "ls:logs": "docker compose logs -f localstack",
+    "bootstrap": "serverless deploy --stage local",
+    "deploy": "serverless deploy --stage local",
+    "wire": "node scripts/wire-notifications.js",
+    "warmup": "node scripts/warmup.js",
+    "socket": "node socket-server/index.js",
+    "remove": "serverless remove --stage local",
+    "health": "node scripts/health-check.js",
+    "seed": "node scripts/seed.js",
+    "smoke": "node scripts/smoke.js",
+    "live:check": "node scripts/live-check2.js",
+    "pipeline:check": "node scripts/pipeline-check.js",
+    "api:url": "node scripts/api-url.js",
+    "sync:env": "node scripts/sync-frontend-env.js",
+    "reset": "node scripts/reset.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.658.0",
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/client-sqs": "^3.658.0",
+    "@aws-sdk/lib-dynamodb": "^3.658.0",
+    "@aws-sdk/s3-request-presigner": "^3.658.0",
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "openai": "^4.67.3",
+    "pdf-parse": "^1.1.1",
+    "socket.io": "^4.7.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^20.14.0",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/uuid": "^9.0.8",
+    "esbuild": "^0.23.1",
+    "serverless": "^3.39.0",
+    "serverless-esbuild": "^1.52.1",
+    "serverless-localstack": "^1.2.1",
+    "typescript": "^5.5.4"
+  }
+}

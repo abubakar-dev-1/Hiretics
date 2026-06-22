@@ -94,6 +94,7 @@ export default function CampaignPage({ id }: CampaignPageProps) {
         .catch(console.error);
     }
   }, [campaign?.id]);
+  // Live "candidate.scored" updates are handled in <BestCandidates/>.
 
   const handleArchive = async () => {
     if (!campaign?.id || !campaign) return;
@@ -143,7 +144,7 @@ export default function CampaignPage({ id }: CampaignPageProps) {
   };
 
   const handleCopyLink = () => {
-    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/campaign/applicants/${campaign?.id}`;
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/campaign/applicants/${campaign?.publicHash}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copied!");
   };
@@ -179,7 +180,7 @@ export default function CampaignPage({ id }: CampaignPageProps) {
   };
 
   const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/campaign/applicants/${campaign?.id}`
+    ? `${window.location.origin}/campaign/applicants/${campaign?.publicHash}`
     : "";
 
   const statusCfg = statusConfig[campaign?.status || ""] || statusConfig.ongoing;
@@ -365,7 +366,7 @@ export default function CampaignPage({ id }: CampaignPageProps) {
                       daysRemaining={daysRemaining}
                       status={campaign.status}
                       onViewAsApplicant={() => {
-                        const url = `${typeof window !== "undefined" ? window.location.origin : ""}/campaign/applicants/${campaign?.id}`;
+                        const url = `${typeof window !== "undefined" ? window.location.origin : ""}/campaign/applicants/${campaign?.publicHash}`;
                         window.open(url, "_blank");
                       }}
                     />

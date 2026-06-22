@@ -10,6 +10,7 @@ import { getCampaigns, favoriteCampaign, archiveCampaign } from "@/api/campaign/
 import { Campaign } from "@/types/campaign";
 import { useRouter } from "next/navigation";
 import { getApplicants } from "@/api/cv/api";
+import { mapLimit } from "@/lib/http";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -29,19 +30,17 @@ export default function Home() {
         setCampaigns(campaigns);
         // Fetch applicants for each campaign
         const counts: Record<string, number> = {};
-        await Promise.all(
-          campaigns.map(async (campaign) => {
-            if (campaign.id) {
-              try {
-                const applicants = await getApplicants(campaign.id);
-                counts[campaign.id] = applicants.length;
-              } catch (error) {
-                console.error(`Error fetching applicants for campaign ${campaign.id}:`, error);
-                counts[campaign.id] = 0;
-              }
+        await mapLimit(campaigns, 2, async (campaign) => {
+          if (campaign.id) {
+            try {
+              const applicants = await getApplicants(campaign.id);
+              counts[campaign.id] = applicants.length;
+            } catch (error) {
+              console.error(`Error fetching applicants for campaign ${campaign.id}:`, error);
+              counts[campaign.id] = 0;
             }
-          })
-        );
+          }
+        });
         setApplicantsCount(counts);
       })
       .catch(console.error)

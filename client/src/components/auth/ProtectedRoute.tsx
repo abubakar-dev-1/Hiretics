@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { useRouter, usePathname } from "next/navigation";
+import { isAuthenticated } from "@/lib/auth";
 
 const PUBLIC_ROUTES = [
   /^\/campaign\/applicants\/[^/]+$/, // Regex for /campaign/applicants/[id]
   /^\/signup$/, // Signup route
   /^\/$/, // Landing page
+  /^\/architecture$/, // Public: interactive architecture showcase
+  /^\/product-tour$/, // Public: interactive product demo
 ];
 
 function isPublicRoute(path: string) {
@@ -20,8 +22,6 @@ export default function ProtectedRoute({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const type = searchParams.get("type");
 
   const [loading, setLoading] = useState(true);
 
@@ -31,22 +31,10 @@ export default function ProtectedRoute({
       setLoading(false);
       return;
     }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.replace("/signin");
-      }
-      if (session && session.user) {
-        const email = session.user.email ?? null;
-        const displayName = session.user.user_metadata?.full_name ?? null;
-        const id = session.user.id ?? null;
-        localStorage.setItem(
-          "user",
-          JSON.stringify({ email, displayName, id })
-        );
-      }
-      setLoading(false);
-    });
+    if (!isAuthenticated()) {
+      router.replace("/signin");
+    }
+    setLoading(false);
   }, [router, pathname]);
 
   if (loading) return <div>Loading...</div>;

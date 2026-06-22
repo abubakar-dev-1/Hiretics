@@ -1,21 +1,16 @@
-import axios from "axios";
+import { authHeaders } from "@/lib/auth";
+import { resilientFetch } from "@/lib/http";
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL_ANALYTICS;
+const BASE = process.env.NEXT_PUBLIC_SERVERLESS_API || "";
 
 // ---------- Types ----------
-
 export interface OverviewStats {
   totalCampaigns: number;
   activeCampaigns: number;
   totalApplicants: number;
   averageScore: number;
 }
-
-export interface ScoreBucket {
-  range: string;
-  count: number;
-}
-
+export interface ScoreBucket { range: string; count: number; }
 export interface CampaignSummary {
   id: string;
   name: string;
@@ -23,60 +18,29 @@ export interface CampaignSummary {
   applicantCount: number;
   avgScore: number;
 }
+export interface AgeDataItem { age: number; count: number; }
+export interface UniversityDataItem { university: string; count: number; }
+export interface CityDataItem { city: string; count: number; percentage: number; }
 
-export interface AgeDataItem {
-  age: number;
-  count: number;
-}
-
-export interface UniversityDataItem {
-  university: string;
-  count: number;
-}
-
-export interface CityDataItem {
-  city: string;
-  count: number;
-  percentage: string;
-}
-
-// ---------- Helpers ----------
-
-function qs(userId: string, campaignId?: string) {
-  const params = new URLSearchParams();
-  params.append("user_id", userId);
-  if (campaignId) params.append("campaign_id", campaignId);
-  return `?${params.toString()}`;
+// ---------- Helper ----------
+// userId is ignored now (the backend scopes by the JWT); kept for signature compat.
+async function get<T>(path: string, campaignId?: string): Promise<T> {
+  const qs = campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : "";
+  const res = await resilientFetch(`${BASE}${path}${qs}`, { headers: { ...authHeaders() } });
+  if (!res.ok) throw new Error(`Failed to fetch ${path}`);
+  return res.json();
 }
 
 // ---------- API functions ----------
-
-export async function fetchOverview(userId: string, campaignId?: string): Promise<OverviewStats> {
-  const { data } = await axios.get(`${BASE}/analytics/overview${qs(userId, campaignId)}`);
-  return data;
-}
-
-export async function fetchScoreDistribution(userId: string, campaignId?: string): Promise<ScoreBucket[]> {
-  const { data } = await axios.get(`${BASE}/analytics/scores${qs(userId, campaignId)}`);
-  return data;
-}
-
-export async function fetchCampaignsSummary(userId: string): Promise<CampaignSummary[]> {
-  const { data } = await axios.get(`${BASE}/analytics/campaigns-summary?user_id=${userId}`);
-  return data;
-}
-
-export async function fetchAgeStats(userId: string, campaignId?: string): Promise<AgeDataItem[]> {
-  const { data } = await axios.get(`${BASE}/analytics/age${qs(userId, campaignId)}`);
-  return data;
-}
-
-export async function fetchUniversityStats(userId: string, campaignId?: string): Promise<UniversityDataItem[]> {
-  const { data } = await axios.get(`${BASE}/analytics/university${qs(userId, campaignId)}`);
-  return data;
-}
-
-export async function fetchCityStats(userId: string, campaignId?: string): Promise<CityDataItem[]> {
-  const { data } = await axios.get(`${BASE}/analytics/city${qs(userId, campaignId)}`);
-  return data;
-}
+export const fetchOverview = (_userId: string, campaignId?: string) =>
+  get<OverviewStats>("/analytics/overview", campaignId);
+export const fetchScoreDistribution = (_userId: string, campaignId?: string) =>
+  get<ScoreBucket[]>("/analytics/scores", campaignId);
+export const fetchCampaignsSummary = (_userId: string) =>
+  get<CampaignSummary[]>("/analytics/campaigns-summary");
+export const fetchAgeStats = (_userId: string, campaignId?: string) =>
+  get<AgeDataItem[]>("/analytics/age", campaignId);
+export const fetchUniversityStats = (_userId: string, campaignId?: string) =>
+  get<UniversityDataItem[]>("/analytics/university", campaignId);
+export const fetchCityStats = (_userId: string, campaignId?: string) =>
+  get<CityDataItem[]>("/analytics/city", campaignId);

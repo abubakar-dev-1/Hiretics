@@ -17,7 +17,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SidebarProps } from "@/types/sidebar-types";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { signOut } from "@/lib/auth";
 import axios from "axios";
 
 const navItems = [
@@ -62,7 +62,7 @@ export const Sidebar = ({
   }, [user.id]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    signOut();
     toast.success("Logged out successfully!");
     router.replace("/signin");
   };

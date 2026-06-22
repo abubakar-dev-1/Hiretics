@@ -24,4 +24,6 @@ export interface Campaign {
   start_date?: string;
   end_date?: string;
   criteria?: CampaignCriteria;
+  publicHash?: string;
+  visibility?: "private" | "public";
 }

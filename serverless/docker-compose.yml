@@ -1,0 +1,31 @@
+# LocalStack — free Community Edition. Emulates S3, SQS, Lambda, DynamoDB,
+# API Gateway, CloudFormation. Single container on port 4566. No AWS account.
+services:
+  localstack:
+    container_name: hiretics-localstack
+    image: localstack/localstack:3
+    ports:
+      - "4566:4566"            # single edge port for every AWS service
+    environment:
+      # Services we actually use (keeps startup lean)
+      - SERVICES=s3,sqs,lambda,dynamodb,apigateway,cloudformation,sts,iam,logs
+      - DEBUG=0
+      # PERSISTENCE=0: LocalStack Community does NOT reliably persist Lambda
+      # functions (only DynamoDB/S3/SQS), and persisted tables make a re-deploy
+      # fail ("table already exists"). So we run ephemeral and deploy fresh once
+      # per session (see docs/09-demo-runbook). Keep the stack RUNNING for the demo.
+      - PERSISTENCE=0
+      # Give Lambda containers room to cold-start (default 10s is too tight for
+      # bundles that load the AI/auth SDKs under concurrent load).
+      - LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT=120
+      - LAMBDA_KEEPALIVE_MS=600000    # 10 min — bound container count over a session
+      # CreateFunction blocks until the function is Active — prevents the
+      # CloudFormation "Function already exist" race when deploying many functions
+      # (serverless-localstack otherwise retries a still-creating function).
+      - LAMBDA_SYNCHRONOUS_CREATE=1
+      # Lambda runs in child Docker containers — needs the host docker socket.
+      # This is also what lets Lambdas reach the internet (AI API). See docs/05.
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./.localstack:/var/lib/localstack"
